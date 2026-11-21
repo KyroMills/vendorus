@@ -1,0 +1,11 @@
+Product ASIN,Title,Price ($),Reviews,Rating,Est. Monthly Sales,Notes
+B0TEST0001,Silicone baking mat,"$1,299.00",1200,4.5,300,ok
+b0test0002,Garlic press,12.99,85,4.1,N/A,lowercase asin
+B0TEST03,Short asin,9.99,10,4.0,50,bad
+B0TEST0004,Too many stars,15.00,40,6,20,
+B0TEST0005,Bad price,abc,40,4.2,20,
+B0TEST0006,Negative reviews,10.00,-3,4.0,20,
+
+,No asin,10.00,5,4.0,10,
+B0TEST0007,Two problems,-1,1.5,4.0,10,
+B0TEST0001,Duplicate,11.00,5,4.0,10,

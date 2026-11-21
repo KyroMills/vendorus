@@ -44,12 +44,29 @@ pytest                      # run the tests
 streamlit run app/Home.py   # open the dashboard at http://localhost:8501
 ```
 
+## Importing research data
+
+Open the dashboard and go to the **Import** page. Pick products, keywords or
+competitors, upload a CSV and click Import. You can use any tool's export or
+fill in a blank template from `templates/` by hand.
+
+- Only `asin` is required (`phrase` for keywords; `asin` and `competes_with`
+  for competitors). Everything else is optional.
+- Column names are matched loosely: `Price ($)`, `price` and `PRICE` all work.
+  The page lists every accepted column name.
+- Bad rows are skipped and listed with their row number and the reason. Good
+  rows are still imported.
+- Each import is saved as a dated snapshot, so importing again adds history
+  instead of overwriting.
+
 ## Project layout
 
 ```
 vendorus/        core Python package (settings, database, engines)
-app/             Streamlit dashboard
-tests/           automated tests
+  importers/     data import: column matching, checks, CSV source
+app/             Streamlit dashboard (pages/ holds extra pages)
+templates/       blank CSV templates for hand-filled research
+tests/           automated tests (fixtures/ holds made-up sample CSVs)
 data/            local database and imports (never committed)
 .env.example     template for local settings; copy to .env
 PROGRESS.md      completed work and remaining tasks
