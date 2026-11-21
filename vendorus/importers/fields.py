@@ -27,6 +27,7 @@ class FieldSpec:
     aliases: tuple[str, ...] = ()
     minimum: float | None = None
     maximum: float | None = None
+    unit: str | None = None  # "in" or "lb": values are converted to this unit
 
     @property
     def label(self) -> str:
@@ -138,6 +139,15 @@ SPECS: dict[ImportKind, tuple[FieldSpec, ...]] = {
         _RATING,
         _SALES,
         _REVENUE,
+        # Packaged size and weight. A unit in brackets, e.g. "Weight (oz)" or
+        # "Length (cm)", is converted; no unit means inches and pounds.
+        FieldSpec("length_in", "number", minimum=0, unit="in", aliases=("length", "package length", "item length")),
+        FieldSpec("width_in", "number", minimum=0, unit="in", aliases=("width", "package width", "item width")),
+        FieldSpec("height_in", "number", minimum=0, unit="in", aliases=("height", "package height", "item height")),
+        FieldSpec(
+            "weight_lb", "number", minimum=0, unit="lb",
+            aliases=("weight", "package weight", "item weight", "shipping weight", "unit weight"),
+        ),
     ),
     ImportKind.KEYWORDS: (
         FieldSpec(
@@ -169,6 +179,35 @@ KEY_FIELDS: dict[ImportKind, tuple[str, ...]] = {
     ImportKind.KEYWORDS: ("phrase",),
     ImportKind.COMPETITORS: ("asin", "competes_with"),
 }
+
+
+_UNIT_FACTORS = {
+    "lb": {"lb": 1, "lbs": 1, "pound": 1, "pounds": 1, "oz": 1 / 16, "ounce": 1 / 16,
+           "ounces": 1 / 16, "kg": 2.20462262185, "g": 0.00220462262185, "grams": 0.00220462262185},
+    "in": {"in": 1, "inch": 1, "inches": 1, "cm": 1 / 2.54, "mm": 1 / 25.4},
+}
+_BRACKETED = re.compile(r"[\(\[]\s*([a-z.]+)\s*[\)\]]")
+
+
+def unit_factor(spec: FieldSpec, column: str) -> float:
+    """Multiplier that converts a column's values into the field's unit.
+
+    Raises FieldError for a unit that can't be converted, so a weight in an
+    unknown unit is never silently read as pounds.
+    """
+    if spec.unit is None:
+        return 1
+    match = _BRACKETED.search(column.lower())
+    if not match:
+        return 1
+    unit = match.group(1).strip(".")
+    factors = _UNIT_FACTORS[spec.unit]
+    if unit not in factors:
+        raise FieldError(
+            f"column '{column}': unit '{unit}' not understood for {spec.label} "
+            f"(use one of: {', '.join(factors)})"
+        )
+    return factors[unit]
 
 
 def match_columns(

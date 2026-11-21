@@ -21,12 +21,28 @@
   - Helium 10 is not required: hand-collected data works, but monthly sales,
     revenue and search volume come only from paid tools
 
+- [x] Phase 2: fee and profit engine (organic-first)
+  - Amazon US fee tables in `vendorus/fees/us.toml`, copied from Amazon's pages
+    on 2026-11-21 with source links: 2026 non-peak, 2026 holiday peak and 2027
+    non-peak fulfillment fees, 2026 and 2027 size tiers, referral fees, storage,
+    3.5% fuel and logistics surcharge
+  - Checked against all six worked examples on Amazon's fee page (18 checks)
+  - Landed cost, profit per unit, margin, return on landed cost, break-even price
+  - Advertising off by default; optional per-product ad scenario shown side by
+    side with the organic result. Returns at a configurable 5%
+  - Every result states that organic ranking and sales are not guaranteed and
+    lists the costs not included
+  - Product import accepts size and weight, converting oz, kg, g, cm and mm
+  - Costs saved per ASIN; re-imports never overwrite them
+  - Older databases are upgraded in place (new columns added)
+
 ## Next up
 
-- [ ] Phase 2: fee and profit engine
-  - Amazon referral and FBA fee tables in a dated config file, sourced from Amazon
-  - Landed cost, contribution margin, break-even price
-  - Verified against Amazon's revenue calculator
+- [ ] Review the fee table against Amazon and set `reviewed = true` in us.toml
+- [ ] Check a few products in Amazon's Revenue Calculator (needs a Seller Central
+      login)
+- [ ] Not yet supported: apparel and dangerous-goods rate cards, oversize
+      handling fees, storage for stock older than 180 days
 - [ ] Phase 3: opportunity scoring (0-100, 10 factors, full breakdown)
 - [ ] Phase 4: ranked opportunities dashboard (Milestone 1)
 

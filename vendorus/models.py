@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -74,6 +74,11 @@ class Product(_TracksMissingFields, Base):
     rating: Mapped[float | None] = mapped_column(Float)
     monthly_sales: Mapped[int | None] = mapped_column(Integer)
     monthly_revenue: Mapped[float | None] = mapped_column(Float)
+    # Packaged dimensions (inches) and weight (pounds); FBA fees depend on them.
+    length_in: Mapped[float | None] = mapped_column(Float)
+    width_in: Mapped[float | None] = mapped_column(Float)
+    height_in: Mapped[float | None] = mapped_column(Float)
+    weight_lb: Mapped[float | None] = mapped_column(Float)
 
     snapshot: Mapped[ResearchSnapshot] = relationship(back_populates="products")
 
@@ -113,3 +118,41 @@ class CompetitorAsin(_TracksMissingFields, Base):
     monthly_revenue: Mapped[float | None] = mapped_column(Float)
 
     snapshot: Mapped[ResearchSnapshot] = relationship(back_populates="competitors")
+
+
+class ProductCost(Base):
+    """Your costs and planning choices for one ASIN.
+
+    Kept apart from research snapshots, so re-importing research data never
+    overwrites them. Blank fields fall back to the import or to defaults.
+    """
+
+    __tablename__ = "product_costs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asin: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    fee_category: Mapped[str | None] = mapped_column(String(255))
+    planned_price: Mapped[float | None] = mapped_column(Float)
+    # Landed cost parts, per unit.
+    unit_cost: Mapped[float | None] = mapped_column(Float)
+    freight_per_unit: Mapped[float | None] = mapped_column(Float)
+    duty_pct: Mapped[float | None] = mapped_column(Float)
+    prep_per_unit: Mapped[float | None] = mapped_column(Float)
+    other_per_unit: Mapped[float | None] = mapped_column(Float)
+    # Measurements you entered; used instead of imported ones when set.
+    length_in: Mapped[float | None] = mapped_column(Float)
+    width_in: Mapped[float | None] = mapped_column(Float)
+    height_in: Mapped[float | None] = mapped_column(Float)
+    weight_lb: Mapped[float | None] = mapped_column(Float)
+    apparel: Mapped[bool] = mapped_column(Boolean, default=False)
+    dangerous_goods: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Planning assumptions; blank means use config/planning.toml.
+    returns_pct: Mapped[float | None] = mapped_column(Float)
+    storage_months: Mapped[float | None] = mapped_column(Float)
+    ads_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    ad_spend_pct: Mapped[float | None] = mapped_column(Float)
+    planned_units_per_month: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, onupdate=_utc_now
+    )

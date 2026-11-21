@@ -22,6 +22,7 @@ from vendorus.importers.fields import (
     ImportKind,
     match_columns,
     parse_value,
+    unit_factor,
 )
 from vendorus.models import CompetitorAsin, Keyword, Product, ResearchSnapshot
 
@@ -102,6 +103,13 @@ def run_import(engine: Engine, source: RowSource, kind: ImportKind | str) -> Imp
         found = ", ".join(c for c in source.columns() if c.strip()) or "none"
         raise ImportFileError(f"Required column missing: {wanted}. Columns found: {found}.")
 
+    try:
+        factors = {
+            spec.name: unit_factor(spec, mapping[spec.name]) for spec in specs if spec.name in mapping
+        }
+    except FieldError as exc:
+        raise ImportFileError(str(exc)[0].upper() + str(exc)[1:] + ".") from None
+
     records: list[dict] = []
     rejected: list[RowError] = []
     first_seen: dict[tuple, int] = {}
@@ -124,6 +132,8 @@ def run_import(engine: Engine, source: RowSource, kind: ImportKind | str) -> Imp
                     reasons.append(f"{spec.label} is missing")
                 else:
                     blank.append(spec.name)
+            elif factors.get(spec.name, 1) != 1:
+                value = round(value * factors[spec.name], 4)
             record[spec.name] = value
 
         if not reasons:

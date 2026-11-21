@@ -1,0 +1,379 @@
+# Amazon US fee tables, copied by hand from Amazon's own pages.
+#
+# Every number here comes from the sources below. Nothing is estimated.
+# When Amazon publishes new fees, add a new period and update `retrieved`.
+#
+# Scope: non-apparel, non-dangerous-goods items (the most common private-label
+# case). Apparel and dangerous goods have their own Amazon rate cards and are
+# flagged as "not supported yet" by the profit engine rather than guessed.
+
+marketplace = "US"
+retrieved = 2026-11-21
+# Set to true once a person has compared these tables with Amazon's pages.
+reviewed = false
+
+[sources]
+fulfillment = "https://sellercentral.amazon.com/help/hub/reference/external/GABBX6GZPA8MSZGW"
+size_tiers = "https://sellercentral.amazon.com/help/hub/reference/external/GG5KW835AHDJCH8W"
+fee_changes_2027 = "https://sellercentral.amazon.com/help/hub/reference/external/G201411300"
+low_price = "https://sellercentral.amazon.com/help/hub/reference/external/GJTAVU7P2W2VE8Q9"
+storage = "https://sellercentral.amazon.com/help/hub/reference/external/GVZX6EAEL2KZ3SGA"
+referral = "https://sell.amazon.com/pricing"
+
+# Fuel and logistics-related surcharge on fulfillment fees, applied since
+# April 17, 2026. Amazon says it applies to 2027 fees too and is under review.
+[surcharge]
+percent = 3.5
+starts = 2026-04-17
+
+# Dimensional weight = length x width x height / divisor.
+# Bulky and oversize items use a minimum width and height of 2 inches.
+[dimensional_weight]
+divisor = 139
+bulky_min_side_in = 2
+
+# Monthly storage per cubic foot for inventory aged 0-180 days. Same rates
+# before and after the February 1, 2027 unified storage fee change. Peak is
+# October-December. Older inventory costs much more (not modelled).
+[storage]
+standard_off_peak = 0.78
+standard_peak = 2.40
+oversize_off_peak = 0.56
+oversize_peak = 1.40
+
+# ---------------------------------------------------------------------------
+# Size tiers. Shipping weight for tiering is the greater of unit weight and
+# dimensional weight. A product gets the first tier whose limits it fits.
+# Limits: max_lb, longest / median / shortest side (in), length_girth (in).
+# A tier with no limits catches everything left.
+
+[tier_sets.2026]
+tiers = [
+  { name = "small_standard", max_lb = 1, longest = 15, median = 12, shortest = 0.75 },
+  { name = "large_standard", max_lb = 20, longest = 18, median = 14, shortest = 8 },
+  { name = "small_bulky", max_lb = 50, longest = 37, median = 28, shortest = 20, length_girth = 130 },
+  { name = "large_bulky", max_lb = 50, longest = 59, median = 33, shortest = 33, length_girth = 130 },
+  { name = "extra_large_0_50", max_lb = 50 },
+  { name = "extra_large_50_70", max_lb = 70 },
+  { name = "extra_large_70_150", max_lb = 150 },
+  { name = "extra_large_150_plus" },
+]
+
+[tier_sets.2027]
+tiers = [
+  { name = "small_standard", max_lb = 1, longest = 15, median = 12, shortest = 0.75 },
+  { name = "large_standard", max_lb = 20, longest = 18, median = 14, shortest = 8 },
+  { name = "small_bulky", max_lb = 50, longest = 28, median = 24, shortest = 20, length_girth = 130 },
+  { name = "medium_bulky", max_lb = 50, longest = 37, median = 28, shortest = 20, length_girth = 130 },
+  { name = "large_bulky", max_lb = 50, longest = 52, median = 28, shortest = 28, length_girth = 130 },
+  { name = "extra_large_bulky", max_lb = 50, longest = 59, median = 33, shortest = 33, length_girth = 130 },
+  { name = "small_oversize", max_lb = 50, longest = 72, length_girth = 130 },
+  { name = "medium_oversize", max_lb = 70, longest = 78, length_girth = 130 },
+  { name = "large_oversize", max_lb = 150, longest = 96, length_girth = 130 },
+  { name = "long_oversize", max_lb = 150, longest = 108, length_girth = 165 },
+  { name = "special_oversize_light", max_lb = 150 },
+  { name = "special_oversize_heavy" },
+]
+
+# ---------------------------------------------------------------------------
+# Fulfillment fees per unit (surcharge not included), by price band:
+# [under $10, $10 to $50 inclusive, over $50].
+#
+# small_standard / large_standard rows: [max shipping weight in oz, <$10, $10-$50, >$50]
+# large_standard over 3 lb: base + per_4oz for each 4 oz interval above 3 lb.
+# Bulky / oversize: base + per_lb for each 1 lb interval above after_lb.
+
+[periods.2026-non-peak]
+label = "2026 non-peak (Jan 15 - Oct 14, 2026)"
+starts = 2026-01-15
+ends = 2026-10-14
+tier_set = "2026"
+low_price_excluded = []
+small_standard = [
+  [2, 2.43, 3.32, 3.58], [4, 2.49, 3.42, 3.68], [6, 2.56, 3.45, 3.71], [8, 2.66, 3.54, 3.80],
+  [10, 2.77, 3.68, 3.94], [12, 2.82, 3.78, 4.04], [14, 2.92, 3.91, 4.17], [16, 2.95, 3.96, 4.22],
+]
+large_standard = [
+  [4, 2.91, 3.73, 3.99], [8, 3.13, 3.95, 4.21], [12, 3.38, 4.20, 4.46], [16, 3.78, 4.60, 4.86],
+  [20, 4.22, 5.04, 5.30], [24, 4.60, 5.42, 5.68], [28, 4.75, 5.57, 5.83], [32, 5.00, 5.82, 6.08],
+  [36, 5.10, 5.92, 6.18], [40, 5.28, 6.10, 6.36], [44, 5.44, 6.26, 6.52], [48, 5.85, 6.67, 6.93],
+]
+large_standard_over_3lb = { base = [6.15, 6.97, 7.23], per_4oz = 0.08 }
+
+[periods.2026-non-peak.per_lb]
+small_bulky = { base = [6.78, 7.55, 7.55], per_lb = 0.38, after_lb = 1 }
+large_bulky = { base = [8.58, 9.35, 9.35], per_lb = 0.38, after_lb = 1 }
+extra_large_0_50 = { base = [25.56, 26.33, 26.33], per_lb = 0.38, after_lb = 1 }
+extra_large_50_70 = { base = [36.55, 37.32, 37.32], per_lb = 0.75, after_lb = 51 }
+extra_large_70_150 = { base = [50.55, 51.32, 51.32], per_lb = 0.75, after_lb = 71 }
+extra_large_150_plus = { base = [194.18, 194.95, 194.95], per_lb = 0.19, after_lb = 151 }
+
+[periods.2026-peak]
+label = "2026 holiday peak (Oct 15, 2026 - Jan 14, 2027)"
+starts = 2026-10-15
+ends = 2027-01-14
+tier_set = "2026"
+low_price_excluded = []
+small_standard = [
+  [2, 2.62, 3.51, 3.77], [4, 2.68, 3.61, 3.87], [6, 2.76, 3.65, 3.91], [8, 2.86, 3.74, 4.00],
+  [10, 2.98, 3.89, 4.15], [12, 3.03, 3.99, 4.25], [14, 3.14, 4.13, 4.39], [16, 3.17, 4.18, 4.44],
+]
+large_standard = [
+  [4, 3.15, 3.97, 4.23], [8, 3.39, 4.21, 4.47], [12, 3.66, 4.48, 4.74], [16, 4.07, 4.89, 5.15],
+  [20, 4.52, 5.34, 5.60], [24, 4.91, 5.73, 5.99], [28, 5.07, 5.89, 6.15], [32, 5.33, 6.15, 6.41],
+  [36, 5.47, 6.29, 6.55], [40, 5.67, 6.49, 6.75], [44, 5.84, 6.66, 6.92], [48, 6.26, 7.08, 7.34],
+]
+large_standard_over_3lb = { base = [6.69, 7.51, 7.77], per_4oz = 0.08 }
+
+[periods.2026-peak.per_lb]
+small_bulky = { base = [7.82, 8.59, 8.59], per_lb = 0.38, after_lb = 1 }
+large_bulky = { base = [9.62, 10.39, 10.39], per_lb = 0.38, after_lb = 1 }
+extra_large_0_50 = { base = [28.29, 29.06, 29.06], per_lb = 0.38, after_lb = 1 }
+extra_large_50_70 = { base = [39.36, 40.13, 40.13], per_lb = 0.75, after_lb = 51 }
+extra_large_70_150 = { base = [54.97, 55.74, 55.74], per_lb = 0.75, after_lb = 71 }
+extra_large_150_plus = { base = [202.69, 203.46, 203.46], per_lb = 0.19, after_lb = 151 }
+
+[periods.2027-non-peak]
+label = "2027 non-peak (Jan 15 - Oct 14, 2027)"
+starts = 2027-01-15
+ends = 2027-10-14
+tier_set = "2027"
+# From Jan 15, 2027 these fee categories no longer get under-$10 rates.
+low_price_excluded = [
+  "Automotive and Powersports",
+  "Appliances - Compact",
+  "Computers",
+  "Musical Instruments and AV Production",
+  "Media - Books, DVD, Music, Software, Video",
+]
+small_standard = [
+  [2, 2.64, 3.75, 4.31], [4, 2.72, 3.78, 4.34], [6, 2.80, 3.92, 4.47], [8, 2.83, 3.97, 4.53],
+  [10, 2.87, 4.06, 4.62], [12, 2.92, 4.16, 4.73], [14, 2.96, 4.30, 4.85], [16, 2.99, 4.32, 4.88],
+]
+large_standard = [
+  [4, 2.91, 3.79, 4.35], [8, 3.13, 4.01, 4.57], [12, 3.38, 4.26, 4.83], [16, 3.78, 4.67, 5.23],
+  [20, 4.22, 5.19, 5.75], [24, 4.60, 5.57, 6.14], [28, 4.75, 5.72, 6.29], [32, 5.00, 5.98, 6.54],
+  [36, 5.10, 6.08, 6.64], [40, 5.28, 6.26, 6.83], [44, 5.44, 6.42, 6.99], [48, 5.85, 6.85, 7.41],
+]
+large_standard_over_3lb = { base = [6.15, 7.16, 7.73], per_4oz = 0.08 }
+
+[periods.2027-non-peak.per_lb]
+small_bulky = { base = [6.73, 7.51, 7.51], per_lb = 0.39, after_lb = 1 }
+medium_bulky = { base = [6.88, 7.66, 7.66], per_lb = 0.39, after_lb = 1 }
+large_bulky = { base = [9.09, 9.88, 9.88], per_lb = 0.39, after_lb = 1 }
+extra_large_bulky = { base = [9.31, 10.09, 10.09], per_lb = 0.39, after_lb = 1 }
+small_oversize = { base = [13.44, 14.22, 14.22], per_lb = 0.28, after_lb = 1 }
+medium_oversize = { base = [27.36, 28.15, 28.15], per_lb = 0.56, after_lb = 51 }
+large_oversize = { base = [37.97, 38.75, 38.75], per_lb = 0.68, after_lb = 51 }
+long_oversize = { base = [62.97, 63.75, 63.75], per_lb = 0.30, after_lb = 1 }
+special_oversize_light = { base = [71.09, 71.87, 71.87], per_lb = 0.30, after_lb = 1 }
+special_oversize_heavy = { base = [190.50, 191.28, 191.28], per_lb = 0.19, after_lb = 151 }
+
+# ---------------------------------------------------------------------------
+# Referral fees (percent of total sales price, or the minimum, whichever is
+# greater). No 2027 changes except 3D printers (effective Nov 5, 2026).
+# mode "flat": one rate. "whole": the total price picks one rate.
+# "portion": each portion of the price is charged at its own rate.
+
+[[referral]]
+category = "3D Printers"
+mode = "portion"
+tiers = [{ up_to = 200, rate = 12 }, { rate = 5 }]
+minimum = 0.30
+
+[[referral]]
+category = "Amazon Device Accessories"
+tiers = [{ rate = 45 }]
+minimum = 0.30
+
+[[referral]]
+category = "Appliances - Compact"
+mode = "portion"
+tiers = [{ up_to = 300, rate = 15 }, { rate = 8 }]
+minimum = 0.30
+
+[[referral]]
+category = "Appliances - Full-size"
+tiers = [{ rate = 8 }]
+minimum = 0.30
+
+[[referral]]
+category = "Automotive and Powersports"
+tiers = [{ rate = 12 }]
+minimum = 0.30
+
+[[referral]]
+category = "Base Equipment Power Tools"
+tiers = [{ rate = 12 }]
+minimum = 0.30
+
+[[referral]]
+category = "Baby Products"
+mode = "whole"
+tiers = [{ up_to = 10, rate = 8 }, { rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Backpacks, Handbags, and Luggage"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Beauty, Health, and Personal Care"
+mode = "whole"
+tiers = [{ up_to = 10, rate = 8 }, { rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Business, Industrial, and Scientific Supplies"
+tiers = [{ rate = 12 }]
+minimum = 0.30
+
+[[referral]]
+category = "Clothing and Accessories"
+mode = "whole"
+tiers = [{ up_to = 15, rate = 5 }, { up_to = 20, rate = 10 }, { rate = 17 }]
+minimum = 0.30
+
+[[referral]]
+category = "Computers"
+tiers = [{ rate = 8 }]
+minimum = 0.30
+
+[[referral]]
+category = "Consumer Electronics"
+tiers = [{ rate = 8 }]
+minimum = 0.30
+
+[[referral]]
+category = "Electronics Accessories"
+mode = "portion"
+tiers = [{ up_to = 100, rate = 15 }, { rate = 8 }]
+minimum = 0.30
+
+[[referral]]
+category = "Eyewear"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Fine Art"
+mode = "portion"
+tiers = [{ up_to = 100, rate = 20 }, { up_to = 1000, rate = 15 }, { up_to = 5000, rate = 10 }, { rate = 5 }]
+minimum = 1.00
+
+[[referral]]
+category = "Footwear"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Furniture"
+mode = "portion"
+tiers = [{ up_to = 200, rate = 15 }, { rate = 10 }]
+minimum = 0.30
+
+[[referral]]
+category = "Gift Cards"
+tiers = [{ rate = 20 }]
+minimum = 0
+
+[[referral]]
+category = "Grocery and Gourmet"
+mode = "whole"
+tiers = [{ up_to = 15, rate = 8 }, { rate = 15 }]
+minimum = 0
+
+[[referral]]
+category = "Home and Kitchen"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Jewelry"
+mode = "portion"
+tiers = [{ up_to = 250, rate = 20 }, { rate = 5 }]
+minimum = 0.30
+
+[[referral]]
+category = "Lawn and Garden"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Lawn Mowers and Snow Throwers"
+mode = "whole"
+tiers = [{ up_to = 500, rate = 15 }, { rate = 8 }]
+minimum = 0.30
+
+[[referral]]
+category = "Mattresses"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Media - Books, DVD, Music, Software, Video"
+tiers = [{ rate = 15 }]
+minimum = 0
+closing_fee = 1.80
+
+[[referral]]
+category = "Musical Instruments and AV Production"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Office Products"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Pet Supplies"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Pet Supplies - Veterinary Diets"
+tiers = [{ rate = 22 }]
+minimum = 0.30
+
+[[referral]]
+category = "Sports and Outdoors"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Tires"
+tiers = [{ rate = 10 }]
+minimum = 0.30
+
+[[referral]]
+category = "Tools and Home Improvement"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Toys and Games"
+tiers = [{ rate = 15 }]
+minimum = 0.30
+
+[[referral]]
+category = "Video Games and Gaming Accessories"
+tiers = [{ rate = 15 }]
+minimum = 0
+
+[[referral]]
+category = "Video Game Consoles"
+tiers = [{ rate = 8 }]
+minimum = 0
+
+[[referral]]
+category = "Watches"
+mode = "portion"
+tiers = [{ up_to = 1500, rate = 16 }, { rate = 3 }]
+minimum = 0.30
+
+[[referral]]
+category = "Everything Else"
+tiers = [{ rate = 15 }]
+minimum = 0.30

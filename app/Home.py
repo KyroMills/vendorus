@@ -36,7 +36,7 @@ with col2:
     st.subheader("Coming next")
     st.markdown(
         "- ~~Phase 1: import product research data~~ done: see the **Import** page\n"
-        "- Phase 2: fee and profit engine\n"
+        "- ~~Phase 2: fee and profit engine~~ done: see the **Profit** page\n"
         "- Phase 3: opportunity scoring\n"
         "- Phase 4: ranked opportunities"
     )

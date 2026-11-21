@@ -1,0 +1,23 @@
+# Planning assumptions for the profit engine.
+#
+# These are defaults. Each product can override them on the Profit page.
+# Strategy: organic-first. Advertising is off unless you turn it on for a
+# product, and results never assume organic sales will happen.
+
+# Percent of units sold that are returned. Each return is costed as lost:
+# the product, its fulfillment fee and Amazon's refund administration fee.
+returns_pct = 5.0
+
+# Average months a unit sits in FBA storage before it sells.
+storage_months = 2.0
+
+# Storage season used for the monthly rate: "blended" (a year's average),
+# "off_peak" (Jan-Sep) or "peak" (Oct-Dec, about 3x higher).
+storage_season = "blended"
+
+# Advertising spend as a percent of sales price, used only when the
+# advertising scenario is turned on for a product.
+ad_spend_pct = 0.0
+
+# Account-level cost, not charged per product. Shown as a reminder.
+professional_plan_monthly = 39.99

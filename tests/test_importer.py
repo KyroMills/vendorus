@@ -97,6 +97,8 @@ def test_clean_file_imports_everything(engine):
     with Session(engine) as session:
         mat = session.scalars(select(Product).where(Product.asin == "B0TEST0001")).one()
         assert mat.price == 19.99 and mat.bsr == 1500 and mat.monthly_sales == 900
+        assert (mat.length_in, mat.width_in, mat.height_in) == (16.5, 3, 3)
+        assert mat.weight_lb == 0.75  # "Weight (oz)" column converted to pounds
         assert mat.missing == []
         assert mat.snapshot.label == "products_clean.csv"
         assert mat.snapshot.source == "csv"
@@ -118,7 +120,9 @@ def test_messy_file_keeps_good_rows_and_explains_bad_ones(engine):
     }
     assert str(report.rejected[0]) == "row 4: asin 'B0TEST03' is not a valid ASIN"
     assert report.unused_columns == ["Notes"]
-    assert report.absent_fields == ["brand", "category", "bsr", "monthly_revenue"]
+    assert report.absent_fields == [
+        "brand", "category", "bsr", "monthly_revenue", "length_in", "width_in", "height_in", "weight_lb",
+    ]
     assert report.summary() == "2 of 9 products rows imported, 7 rejected"
 
     with Session(engine) as session:
@@ -243,3 +247,44 @@ def test_templates_match_the_fields(kind):
 def test_csv_source_reports_spreadsheet_row_numbers():
     source = CsvSource(io.BytesIO(b"asin\n\nB0TEST0001\n"))
     assert [row.number for row in source.rows()] == [3]
+
+
+@pytest.mark.parametrize(
+    "header, value, expected",
+    [("Weight", "2", 2), ("Weight (lb)", "2", 2), ("Weight (oz)", "8", 0.5), ("Weight (kg)", "1", 2.2046),
+     ("Weight (g)", "500", 1.1023)],
+)
+def test_weight_units_are_converted_to_pounds(engine, header, value, expected):
+    data = f"asin,{header}\nB0TEST0001,{value}\n".encode()
+    import_csv(engine, io.BytesIO(data), "products")
+    with Session(engine) as session:
+        assert session.scalars(select(Product.weight_lb)).one() == pytest.approx(expected, abs=1e-4)
+
+
+def test_centimetres_are_converted_to_inches(engine):
+    import_csv(engine, io.BytesIO(b"asin,Length (cm)\nB0TEST0001,25.4\n"), "products")
+    with Session(engine) as session:
+        assert session.scalars(select(Product.length_in)).one() == 10
+
+
+def test_unknown_unit_is_refused_not_guessed(engine):
+    with pytest.raises(ImportFileError, match="unit 'stone' not understood for weight lb"):
+        import_csv(engine, io.BytesIO(b"asin,Weight (stone)\nB0TEST0001,1\n"), "products")
+
+
+def test_old_database_gets_new_columns(tmp_path):
+    """A database made before Phase 2 is upgraded in place, keeping its rows."""
+    from sqlalchemy import create_engine, inspect, text
+
+    engine = create_engine(f"sqlite:///{(tmp_path / 'old.db').as_posix()}")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE research_snapshots (id INTEGER PRIMARY KEY, kind VARCHAR(20), "
+                          "source VARCHAR(50), label VARCHAR(255), imported_at DATETIME, rows_total INTEGER, "
+                          "rows_accepted INTEGER, rows_rejected INTEGER)"))
+        conn.execute(text("CREATE TABLE products (id INTEGER PRIMARY KEY, snapshot_id INTEGER, asin VARCHAR(10), "
+                          "missing_fields VARCHAR(500))"))
+        conn.execute(text("INSERT INTO products (snapshot_id, asin, missing_fields) VALUES (1, 'B0TEST0001', '')"))
+    create_tables(engine)
+    columns = {c["name"] for c in inspect(engine).get_columns("products")}
+    assert {"length_in", "weight_lb", "price"} <= columns
+    assert count(engine, Product) == 1

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 
 from vendorus.config import Settings, load_settings
@@ -34,10 +34,29 @@ def get_engine(settings: Settings | None = None) -> Engine:
 
 
 def create_tables(engine: Engine) -> None:
-    """Create any missing tables. Safe to call every time; existing data is kept."""
+    """Create missing tables and add missing columns. Safe to call every time;
+    existing data is kept."""
     from vendorus.models import Base
 
     Base.metadata.create_all(engine)
+    _add_missing_columns(engine, Base)
+
+
+def _add_missing_columns(engine: Engine, base) -> None:
+    """Bring a database made by an older version up to date.
+
+    New columns are always optional (nullable), so adding them is safe.
+    Removing or changing columns is never done here.
+    """
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in base.metadata.sorted_tables:
+            existing = {column["name"] for column in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in existing:
+                    continue
+                column_type = column.type.compile(dialect=engine.dialect)
+                conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}'))
 
 
 def check_connection(engine: Engine) -> bool:
