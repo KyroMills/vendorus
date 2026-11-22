@@ -39,6 +39,25 @@ If PowerShell blocks the activate script, run once:
 
 ## Run
 
+### Desktop launcher (easiest)
+
+- **Mac:** double-click `Vendorus.command` in Finder. For a Dock icon, run
+  `scripts/make_mac_app.sh` once; it builds `Vendorus.app` in your
+  Applications folder (Home > Applications). Open it, then right-click its
+  Dock icon and choose Options > Keep in Dock. Clicking the icon again
+  reopens the browser; Quit stops the dashboard.
+- **Windows:** double-click `Vendorus.bat`. To pin it, right-click it and
+  choose Send to > Desktop (create shortcut).
+
+The launcher sets everything up on first run (creates `.venv` and installs
+the requirements), picks a free port, and opens the dashboard in your
+browser. Closing the launcher window stops the dashboard. It only listens on
+this computer, not your network. Logs go to `data/launcher.log`.
+
+If you move the project folder, run `scripts/make_mac_app.sh` again.
+
+### From a terminal
+
 ```bash
 pytest                      # run the tests
 streamlit run app/Home.py   # open the dashboard at http://localhost:8501
@@ -94,6 +113,8 @@ tests/           automated tests (fixtures/ holds made-up sample CSVs)
 data/            local database and imports (never committed)
 .env.example     template for local settings; copy to .env
 PROGRESS.md      completed work and remaining tasks
+launcher.py      desktop launcher (Vendorus.command / Vendorus.bat run it)
+scripts/         make_mac_app.sh builds the Mac Dock app
 ```
 
 ## Key decisions

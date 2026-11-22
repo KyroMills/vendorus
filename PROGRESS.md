@@ -36,6 +36,10 @@
   - Costs saved per ASIN; re-imports never overwrite them
   - Older databases are upgraded in place (new columns added)
 
+- [x] Dashboard: modern light and dark theme, sidebar navigation, Overview page
+- [x] Desktop launcher: double-click files for Mac and Windows, Mac Dock app
+  (tested on macOS; Windows launcher not yet tested on a Windows PC)
+
 ## Next up
 
 - [ ] Review the fee table against Amazon and set `reviewed = true` in us.toml
