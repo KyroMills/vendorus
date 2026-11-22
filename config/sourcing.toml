@@ -1,0 +1,29 @@
+# Sourcing settings: suppliers, quotes and landed cost.
+#
+# Money in a quote: product price, packaging, tooling and samples are in the
+# quote's currency; shipping and import costs (freight, broker, inspection,
+# other fees) are in US dollars, since you usually pay them at home.
+# Exchange rates are entered per quote: Vendorus never fetches live rates.
+
+# Days Amazon may take to receive stock after it arrives. Varies a lot by
+# season and fulfillment center; this is a planning assumption.
+receiving_buffer_days = 14
+
+# Official US tariff lookup for finding a duty rate (enter it yourself).
+tariff_lookup_url = "https://hts.usitc.gov/"
+
+currencies = ["USD", "CNY", "EUR", "GBP", "INR", "VND", "MXN", "CAD", "TWD", "THB"]
+statuses = ["Prospect", "Contacted", "Sampling", "Approved", "Rejected"]
+platforms = ["Alibaba", "Made-in-China", "Global Sources", "Direct factory", "Trade show", "US manufacturer", "Other"]
+shipping_methods = ["Sea", "Air", "Express courier", "Ground (domestic)", "Rail"]
+
+# What each Incoterm includes in the supplier's price. "freight" = shipping
+# to the destination; "duty" = US import duty and customs clearance.
+[incoterms]
+EXW = { freight = false, duty = false, name = "Ex Works: you arrange everything from the factory door" }
+FCA = { freight = false, duty = false, name = "Free Carrier: supplier hands goods to your carrier" }
+FOB = { freight = false, duty = false, name = "Free On Board: supplier loads the ship; you pay ocean freight" }
+CFR = { freight = true, duty = false, name = "Cost and Freight: supplier pays shipping to the US port" }
+CIF = { freight = true, duty = false, name = "Cost, Insurance and Freight: as CFR plus insurance" }
+DAP = { freight = true, duty = false, name = "Delivered At Place: delivered; you pay duty" }
+DDP = { freight = true, duty = true, name = "Delivered Duty Paid: delivered with duty paid" }

@@ -17,6 +17,7 @@ COST_FIELDS = (
     "fee_category", "planned_price", "unit_cost", "freight_per_unit", "duty_pct", "prep_per_unit",
     "other_per_unit", "length_in", "width_in", "height_in", "weight_lb", "apparel", "dangerous_goods",
     "returns_pct", "storage_months", "ads_enabled", "ad_spend_pct", "planned_units_per_month", "notes",
+    "quote_id",
 )
 
 

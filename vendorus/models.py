@@ -159,6 +159,8 @@ class ProductCost(Base):
     ads_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     ad_spend_pct: Mapped[float | None] = mapped_column(Float)
     planned_units_per_month: Mapped[int | None] = mapped_column(Integer)
+    # The supplier quote these costs were copied from, if any (Phase 6).
+    quote_id: Mapped[int | None] = mapped_column(Integer)
     notes: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, onupdate=_utc_now
@@ -215,3 +217,65 @@ class ProductValidation(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, onupdate=_utc_now
     )
+
+
+class Supplier(Base):
+    """A supplier you've found or talked to. Stays in your local database."""
+
+    __tablename__ = "suppliers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    country: Mapped[str | None] = mapped_column(String(100))
+    platform: Mapped[str | None] = mapped_column(String(100))
+    contact_name: Mapped[str | None] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255))
+    website: Mapped[str | None] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(30), default="Prospect")
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, onupdate=_utc_now
+    )
+
+    quotes: Mapped[list[Quote]] = relationship(back_populates="supplier", cascade="all, delete-orphan")
+
+
+class Quote(Base):
+    """One supplier's price for one product (ASIN).
+
+    Product price, packaging, tooling and samples are in `currency`;
+    freight and import fees are in US dollars.
+    """
+
+    __tablename__ = "quotes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id", ondelete="CASCADE"), index=True)
+    asin: Mapped[str] = mapped_column(String(10), index=True)
+    received_on: Mapped[date | None] = mapped_column(Date)
+    valid_until: Mapped[date | None] = mapped_column(Date)
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    exchange_rate: Mapped[float] = mapped_column(Float, default=1.0)  # US dollars per 1 unit of currency
+    unit_price: Mapped[float] = mapped_column(Float)
+    moq: Mapped[int | None] = mapped_column(Integer)
+    price_breaks: Mapped[str] = mapped_column(Text, default="[]")  # JSON [[min quantity, unit price], ...]
+    order_qty: Mapped[int | None] = mapped_column(Integer)  # the quantity you plan to order
+    incoterm: Mapped[str] = mapped_column(String(10), default="FOB")
+    payment_terms: Mapped[str | None] = mapped_column(String(255))
+    packaging_per_unit: Mapped[float] = mapped_column(Float, default=0.0)
+    tooling_cost: Mapped[float] = mapped_column(Float, default=0.0)
+    sample_cost: Mapped[float] = mapped_column(Float, default=0.0)
+    shipping_method: Mapped[str | None] = mapped_column(String(50))
+    freight_mode: Mapped[str] = mapped_column(String(20), default="per_shipment")  # or per_unit
+    freight_amount: Mapped[float] = mapped_column(Float, default=0.0)  # USD
+    transit_days: Mapped[int | None] = mapped_column(Integer)
+    duty_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    broker_fee: Mapped[float] = mapped_column(Float, default=0.0)  # USD per order
+    inspection_fee: Mapped[float] = mapped_column(Float, default=0.0)  # USD per order
+    other_fees: Mapped[float] = mapped_column(Float, default=0.0)  # USD per order
+    production_days: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+
+    supplier: Mapped[Supplier] = relationship(back_populates="quotes")

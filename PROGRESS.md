@@ -84,6 +84,21 @@
   - Chart colours switched to a palette validated for colour-blind
     separation and contrast in light and dark mode
 
+- [x] Phase 6: suppliers and quotes
+  - Suppliers: details, where found, status (Prospect to Approved/Rejected),
+    kept in the local database
+  - Quotes per product: price breaks, MOQ, currency with your own exchange
+    rate, Incoterm, packaging, tooling, samples, freight per shipment or per
+    unit, duty %, broker/inspection/other fees, production and transit days
+  - Landed cost for your order quantity with a full breakdown; DDP/CIF etc.
+    don't double-count freight or duty; cash for the order; days to Amazon
+  - Compare quotes with each one's organic profit, margin, break-even and
+    opportunity score; "Use this quote" updates Profit, Score, Validate and
+    Opportunities, and ticks the supplier-quote checklist item
+  - Warnings: below MOQ, expired quote, no duty rate, no freight
+  - Settings in `config/sourcing.toml` (receiving buffer, currencies,
+    Incoterms); duty rates are never guessed
+
 ## Milestone 1: done
 
 Import real research data, calculate organic profitability from Amazon's
@@ -99,7 +114,6 @@ own fees, score every product 0-100 with a full breakdown, and rank them.
 
 ## Later
 
-- [ ] Phase 6: supplier tracking and landed costs
 - [ ] Phase 7: Helium 10 MCP (Diamond plan) and Amazon SP-API
 - [ ] Phase 8: operations module, cloud hosting
 

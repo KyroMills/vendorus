@@ -91,6 +91,16 @@ period = right.selectbox(
     "Holiday peak fees are higher.",
 )
 
+if saved is not None and saved.quote_id:
+    from vendorus.sourcing import get_quote, quote_label
+
+    source = get_quote(engine, saved.quote_id)
+    if source is not None:
+        st.caption(f":material/request_quote: Landed costs come from the quote: {quote_label(source)}. "
+                   "Editing them here overrides it.")
+        st.page_link("views/quotes.py", label="Compare quotes", icon=":material/request_quote:",
+                     query_params={"asin": asin})
+
 key = asin or "manual"
 categories = tables.categories
 suggested = suggest_fee_category(tables, product.category if product else None)

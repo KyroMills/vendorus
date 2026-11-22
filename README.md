@@ -82,6 +82,9 @@ streamlit run app/Home.py   # open the dashboard at http://localhost:8501
 5. **Validate** (Validate): import a trends file and reviews for the
    products you like, check the risk flags, seasonality and complaints,
    work through the checklist and record go / watch / no-go.
+6. **Source** (Sourcing > Suppliers, Quotes): add suppliers, enter their
+   quotes, compare landed cost, profit and score per quote, and use the
+   best one for the product's costs.
 
 ## Importing research data
 
@@ -149,6 +152,22 @@ changes the score.
   products, supplements, batteries...). They are prompts to check, not
   legal advice.
 
+## Suppliers and quotes
+
+Enter each supplier's quote on the **Quotes** page. Vendorus works out the
+landed cost per unit for the quantity you plan to order: product (at the
+right price break), packaging, freight, duty, per-order fees and tooling.
+
+- Product price, packaging, tooling and samples are in the quote's currency,
+  converted with an exchange rate **you** enter. Freight and import fees are
+  in US dollars.
+- The Incoterm decides what's already in the price: freight for CFR, CIF and
+  DAP; freight and duty for DDP.
+- Duty rates change often, so enter your product's rate yourself (look up
+  its tariff code at https://hts.usitc.gov/). Vendorus never guesses one.
+- **Use this quote** copies the landed cost into the product's costs, so
+  Profit, Score, Validate and Opportunities all use it.
+
 ## Project layout
 
 ```
@@ -159,10 +178,11 @@ vendorus/        core Python package (settings, database, engines)
   scoring.py     opportunity score (0-100) and its breakdown
   ranking.py     ranking, filters and CSV export
   validation.py  seasonality, reviews, risk flags, decisions
+  sourcing.py    suppliers, quotes, landed cost
 app/             Streamlit dashboard: Home.py (entry point and navigation),
                  views/ (one file per page), ui.py (shared styling)
 .streamlit/      dashboard theme (light and dark, fonts, colours)
-config/          planning.toml, scoring.toml, validation.toml
+config/          planning, scoring, validation and sourcing settings
 templates/       blank CSV templates for hand-filled research
 tests/           automated tests (fixtures/ holds made-up sample CSVs)
 data/            local database and imports (never committed)

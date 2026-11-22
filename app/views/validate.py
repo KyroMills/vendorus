@@ -173,11 +173,17 @@ with st.container(border=True):
 
 # --- checklist and decision ------------------------------------------------------------------
 section("Checklist and decision", "Saved for this ASIN. Shows on the Opportunities page.")
+from vendorus.costs import get_cost  # noqa: E402
+
+quote_in_use = bool((cost := get_cost(engine, asin)) and cost.quote_id)
 with st.form(f"decision-{asin}"):
-    checks = {
-        item: st.checkbox(item, value=bool(decision.checklist.get(item)), key=f"chk-{asin}-{i}")
-        for i, item in enumerate(cfg["checklist"]["items"])
-    }
+    checks = {}
+    for i, item in enumerate(cfg["checklist"]["items"]):
+        automatic = quote_in_use and "supplier quote" in item.lower()
+        checks[item] = st.checkbox(
+            item, value=bool(decision.checklist.get(item)) or automatic, key=f"chk-{asin}-{i}",
+            help="Ticked automatically: a supplier quote is in use for this product." if automatic else None,
+        )
     choice = st.segmented_control("Decision", DECISIONS, default=decision.decision, required=True,
                                   key=f"dec-{asin}")
     notes = st.text_area("Notes", value=decision.notes, placeholder="Why go, watch or pass?",

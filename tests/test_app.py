@@ -59,7 +59,7 @@ def import_garlic_market(engine):
 
 @pytest.mark.parametrize(
     "page", ["views/opportunities.py", "views/import_data.py", "views/profit.py", "views/score.py",
-             "views/validate.py"]
+             "views/validate.py", "views/suppliers.py", "views/quotes.py"]
 )
 def test_every_page_loads_when_empty(page):
     open_page(page)
@@ -213,3 +213,44 @@ def test_opportunities_show_risks_season_and_decision(engine):
     assert row["Risks"].startswith("1 high")
     at.multiselect(key="opp_decisions").set_value(["No-go"]).run()
     assert [t.label for t in at.tabs][0] == "Ranked · 0"
+
+
+def test_suppliers_page_adds_a_supplier(engine):
+    from vendorus.sourcing import list_suppliers
+
+    at = open_page("views/suppliers.py")
+    at.text_input[0].input("Ningbo Kitchenware Co.")
+    at.text_input[1].input("China")
+    at.button[0].click().run()
+    assert not at.exception
+    assert [s.name for s, _ in list_suppliers(engine)] == ["Ningbo Kitchenware Co."]
+
+
+def test_quotes_page_asks_for_a_supplier_first(engine):
+    import_garlic_market(engine)
+    at = open_page("views/quotes.py", asin="B0MAIN0001")
+    assert any("Add a supplier first" in m.value for m in at.markdown)
+
+
+def test_quotes_page_compares_and_uses_a_quote(engine):
+    from test_sourcing import NINGBO
+
+    from vendorus.costs import get_cost
+    from vendorus.sourcing import save_quote, save_supplier
+
+    import_garlic_market(engine)
+    supplier = save_supplier(engine, name="Ningbo Kitchenware Co.", country="China")
+    quote_id = save_quote(engine, supplier_id=supplier, **NINGBO)
+    at = open_page("views/quotes.py", asin="B0MAIN0001")
+    frame = next(d.value for d in at.dataframe if "Landed/unit" in d.value.columns)
+    assert frame["Landed/unit"].iloc[0] == 5.22
+    assert {m.label: m.value for m in at.metric}["Order cash"] == "$5,262"
+    use = next(b for b in at.button if b.label == "Use this quote for this product")
+    use.click().run()
+    assert not at.exception
+    assert get_cost(engine, "B0MAIN0001").quote_id == quote_id
+
+    # The Validate checklist ticks the supplier-quote item by itself.
+    at = open_page("views/validate.py", asin="B0MAIN0001")
+    item = next(c for c in at.checkbox if "supplier quote" in c.label)
+    assert item.value is True

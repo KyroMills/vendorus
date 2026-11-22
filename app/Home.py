@@ -28,6 +28,11 @@ pages = {
         st.Page(APP / "views" / "validate.py", title="Validate", icon=":material/fact_check:",
                 url_path="validate"),
     ],
+    "Sourcing": [
+        st.Page(APP / "views" / "suppliers.py", title="Suppliers", icon=":material/storefront:",
+                url_path="suppliers"),
+        st.Page(APP / "views" / "quotes.py", title="Quotes", icon=":material/request_quote:", url_path="quotes"),
+    ],
 }
 st.logo(str(APP / "assets" / "logo.svg"), icon_image=str(APP / "assets" / "icon.svg"), size="large")
 
