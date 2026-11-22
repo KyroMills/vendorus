@@ -18,6 +18,7 @@ from vendorus.scoring import Score
 SETTINGS_FILES = (
     PROJECT_ROOT / "config" / "scoring.toml",
     PROJECT_ROOT / "config" / "planning.toml",
+    PROJECT_ROOT / "config" / "validation.toml",
     PROJECT_ROOT / "vendorus" / "fees" / "us.toml",
 )
 
@@ -63,6 +64,8 @@ class Filters:
     price_min: float | None = None
     price_max: float | None = None
     hide_warnings: bool = False
+    decisions: tuple[str, ...] = ()
+    decision_of: dict | None = None  # ASIN -> decision, needed when filtering by decision
 
 
 def apply_filters(scores: list[Score], f: Filters) -> list[Score]:
@@ -84,6 +87,8 @@ def apply_filters(scores: list[Score], f: Filters) -> list[Score]:
             continue
         if f.hide_warnings and s.warnings:
             continue
+        if f.decisions and (f.decision_of or {}).get(s.asin, "Undecided") not in f.decisions:
+            continue
         out.append(s)
     return out
 
@@ -92,8 +97,30 @@ def _num(value):
     return None if value is None else float(value)
 
 
-def table(scores: list[Score], numbered: bool = False) -> pd.DataFrame:
-    """Rows for the on-screen tables."""
+def risk_text(validation) -> str:
+    if validation is None:
+        return ""
+    parts = []
+    if validation.count("high"):
+        parts.append(f"{validation.count('high')} high")
+    if validation.count("medium"):
+        parts.append(f"{validation.count('medium')} to check")
+    return " · ".join(parts) or "None"
+
+
+def season_text(validation) -> str:
+    if validation is None or validation.season.label is None:
+        return "Unknown"
+    text = validation.season.label
+    if validation.season.trend in ("Declining", "Growing"):
+        text += f", {validation.season.trend.lower()}"
+    return text
+
+
+def table(scores: list[Score], numbered: bool = False, validations: dict | None = None,
+          decisions: dict | None = None) -> pd.DataFrame:
+    """Rows for the on-screen tables. With validations and decisions, adds
+    Risks, Season and Decision columns."""
     rows = []
     for i, s in enumerate(scores, start=1):
         row = {"#": i} if numbered else {}
@@ -111,11 +138,17 @@ def table(scores: list[Score], numbered: bool = False) -> pd.DataFrame:
             "Warnings": len(s.warnings),
             "Researched": s.researched_on,
         })
+        if validations is not None:
+            row["Risks"] = risk_text(validations.get(s.asin))
+            row["Season"] = season_text(validations.get(s.asin))
+        if decisions is not None:
+            row["Decision"] = decisions.get(s.asin, "Undecided")
         rows.append(row)
     return pd.DataFrame(rows)
 
 
-def export_frame(ranking: Ranking) -> pd.DataFrame:
+def export_frame(ranking: Ranking, validations: dict | None = None,
+                 decisions: dict | None = None) -> pd.DataFrame:
     """Everything behind the ranking, one row per product, for a CSV."""
     rows = []
     groups = (("Ranked", ranking.ranked), ("Needs data", ranking.needs_data),
@@ -142,6 +175,13 @@ def export_frame(ranking: Ranking) -> pd.DataFrame:
                 "warnings": " | ".join(s.warnings),
                 "researched_on": s.researched_on.date().isoformat() if s.researched_on else None,
             }
+            if validations is not None:
+                v = validations.get(s.asin)
+                row["risks"] = risk_text(v)
+                row["risk_flags"] = " | ".join(f"{f.severity}: {f.title}" for f in v.flags) if v else ""
+                row["season"] = season_text(v)
+            if decisions is not None:
+                row["decision"] = decisions.get(s.asin, "Undecided")
             for f in s.factors:
                 row[f"{f.spec.key}_points"] = f.points
                 row[f"{f.spec.key}_based_on"] = f.value if f.scored else f"no data: {f.missing}"

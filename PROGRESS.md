@@ -67,6 +67,23 @@
     settings change (500 products in about 0.3 s)
   - End-to-end test: import, costs, score, rank, export
 
+- [x] Phase 5: validation
+  - New imports: trends (monthly search volume or sales history) and
+    customer reviews; competitors can carry a brand
+  - Seasonality: pattern (steady / moderate / highly seasonal), peak months,
+    and 12-month demand trend (needs 24 months)
+  - Reviews: rating breakdown, complaint share, the phrases complaints
+    mention most (with examples), review velocity from repeat imports
+  - Risk flags: dominant brand or listing, declining demand, fast review
+    growth, product types needing compliance checks (children's, supplements,
+    topicals, batteries...), plus profit warnings; rules in
+    `config/validation.toml`
+  - Validate page with research history, a checklist and a go / watch /
+    no-go decision per ASIN; Opportunities shows Risks, Season and Decision
+  - Validation never changes the score
+  - Chart colours switched to a palette validated for colour-blind
+    separation and contrast in light and dark mode
+
 ## Milestone 1: done
 
 Import real research data, calculate organic profitability from Amazon's
@@ -82,7 +99,6 @@ own fees, score every product 0-100 with a full breakdown, and rank them.
 
 ## Later
 
-- [ ] Phase 5: validation (reviews, seasonality, risk flags)
 - [ ] Phase 6: supplier tracking and landed costs
 - [ ] Phase 7: Helium 10 MCP (Diamond plan) and Amazon SP-API
 - [ ] Phase 8: operations module, cloud hosting

@@ -30,6 +30,8 @@ ICONS = {
     ImportKind.PRODUCTS: ":material/inventory_2:",
     ImportKind.KEYWORDS: ":material/search:",
     ImportKind.COMPETITORS: ":material/groups:",
+    ImportKind.TRENDS: ":material/show_chart:",
+    ImportKind.REVIEWS: ":material/reviews:",
 }
 kind = st.segmented_control(
     "What are you importing?",

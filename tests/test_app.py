@@ -58,7 +58,8 @@ def import_garlic_market(engine):
 
 
 @pytest.mark.parametrize(
-    "page", ["views/opportunities.py", "views/import_data.py", "views/profit.py", "views/score.py"]
+    "page", ["views/opportunities.py", "views/import_data.py", "views/profit.py", "views/score.py",
+             "views/validate.py"]
 )
 def test_every_page_loads_when_empty(page):
     open_page(page)
@@ -166,3 +167,49 @@ def test_overview_lists_top_opportunities(engine):
     at = open_page()
     assert any("Top opportunities" in h.value for h in at.subheader)
     assert any("81" in m.value and "Strong" in m.value for m in at.markdown)
+
+
+def test_validate_page_shows_flags_season_reviews_and_saves_a_decision(engine):
+    from test_validation import REVIEWS, trend_csv, two_years
+
+    from vendorus.importers import import_csv
+    from vendorus.validation import get_decision
+
+    import_garlic_market(engine)
+    import_csv(engine, io.BytesIO(trend_csv(two_years(second_year_factor=0.75))), "trends")
+    import_csv(engine, io.BytesIO(REVIEWS.encode()), "reviews")
+    at = open_page("views/validate.py", asin="B0MAIN0001")
+    metrics = {m.label: m.value for m in at.metric}
+    assert metrics["Score"] == "81 / 100"
+    assert metrics["High risks"] == "1"  # demand is declining
+    assert any("Highly seasonal" in m.value for m in at.markdown)  # badges render as markdown
+    assert metrics["Peak months"] == "Nov, Dec"
+    assert metrics["Reviews"] == "8"
+
+    at.checkbox(key="chk-B0MAIN0001-0").check()
+    at.button_group(key="dec-B0MAIN0001").set_value("Watch")
+    at.text_area(key="notes-B0MAIN0001").input("Waiting for samples")
+    at.button[0].click().run()
+    assert not at.exception
+    saved = get_decision(engine, "B0MAIN0001")
+    assert saved.decision == "Watch" and saved.notes == "Waiting for samples"
+    assert any(saved.checklist.values())
+
+
+def test_opportunities_show_risks_season_and_decision(engine):
+    from test_validation import trend_csv, two_years
+
+    from vendorus.importers import import_csv
+    from vendorus.validation import save_decision
+
+    import_garlic_market(engine)
+    import_csv(engine, io.BytesIO(trend_csv(two_years(second_year_factor=0.75))), "trends")
+    save_decision(engine, "B0MAIN0001", "Go", {})
+    at = open_page("views/opportunities.py")
+    frame = at.dataframe[0].value
+    row = frame[frame["ASIN"] == "B0MAIN0001"].iloc[0]
+    assert row["Decision"] == "Go"
+    assert row["Season"] == "Highly seasonal, declining"
+    assert row["Risks"].startswith("1 high")
+    at.multiselect(key="opp_decisions").set_value(["No-go"]).run()
+    assert [t.label for t in at.tabs][0] == "Ranked · 0"

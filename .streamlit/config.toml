@@ -20,9 +20,12 @@ baseRadius = "0.75rem"
 buttonRadius = "0.6rem"
 showWidgetBorder = true
 showSidebarBorder = true
-chartCategoricalColors = ["#4F46E5", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"]
 
+# Chart colours: the dataviz reference palette, validated for colour-blind
+# separation and contrast on this theme's light and dark backgrounds
+# (light mode: three slots are under 3:1, so charts keep labels or a table).
 [theme.light]
+chartCategoricalColors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
 primaryColor = "#4F46E5"
 backgroundColor = "#F8FAFC"
 secondaryBackgroundColor = "#FFFFFF"
@@ -37,6 +40,7 @@ backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F1F5F9"
 
 [theme.dark]
+chartCategoricalColors = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c", "#9085e9", "#e66767"]
 primaryColor = "#818CF8"
 backgroundColor = "#0B1120"
 secondaryBackgroundColor = "#111827"

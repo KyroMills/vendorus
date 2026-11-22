@@ -22,14 +22,17 @@ from vendorus.importers.fields import (
     ImportKind,
     match_columns,
     parse_value,
+    trend_metric,
     unit_factor,
 )
-from vendorus.models import CompetitorAsin, Keyword, Product, ResearchSnapshot
+from vendorus.models import CompetitorAsin, Keyword, Product, ResearchSnapshot, Review, TrendPoint
 
 MODELS = {
     ImportKind.PRODUCTS: Product,
     ImportKind.KEYWORDS: Keyword,
     ImportKind.COMPETITORS: CompetitorAsin,
+    ImportKind.TRENDS: TrendPoint,
+    ImportKind.REVIEWS: Review,
 }
 
 
@@ -135,6 +138,13 @@ def run_import(engine: Engine, source: RowSource, kind: ImportKind | str) -> Imp
             elif factors.get(spec.name, 1) != 1:
                 value = round(value * factors[spec.name], 4)
             record[spec.name] = value
+
+        if kind == ImportKind.TRENDS and not reasons:
+            # Label what the numbers measure: from a "metric" column if given,
+            # otherwise from the value column's name ("Search Volume", "Sales"...).
+            metric = record.get("metric") or trend_metric(mapping["value"])
+            record["metric"] = metric.strip().lower().replace(" ", "_")
+            blank = [name for name in blank if name != "metric"]
 
         if not reasons:
             key = tuple(record[name] for name in KEY_FIELDS[kind])

@@ -79,6 +79,9 @@ streamlit run app/Home.py   # open the dashboard at http://localhost:8501
 3. **Check the score** (Score): see each factor and what data is missing.
 4. **Rank** (Opportunities): every product ranked, with filters, a
    side-by-side comparison and a CSV export. Click a row to open its score.
+5. **Validate** (Validate): import a trends file and reviews for the
+   products you like, check the risk flags, seasonality and complaints,
+   work through the checklist and record go / watch / no-go.
 
 ## Importing research data
 
@@ -128,6 +131,24 @@ its ASIN. Profit factors use the Profit page's numbers with no advertising.
 - Limits, weights and score bands are in `config/scoring.toml`, with the
   reason for each. They're starting assumptions; tune them as you learn.
 
+## Validation
+
+The **Validate** page checks whether a promising product holds up. It never
+changes the score.
+
+- **Seasonality** needs a *trends* import: 12+ months of search volume for
+  the main keyword (or sales for the ASIN), e.g. a research tool's history
+  export or Google Trends. 24 months also shows whether demand is growing
+  or declining.
+- **Reviews** needs a *reviews* import (ASIN, stars, date, title, text) for
+  the product and its competitors. Vendorus lists the phrases that come up
+  most in 1-3 star reviews. Review velocity comes from importing the same
+  competitors again at least 14 days later.
+- **Risk flags** come from your data (dominant brand, declining demand...)
+  and from product-type rules in `config/validation.toml` (children's
+  products, supplements, batteries...). They are prompts to check, not
+  legal advice.
+
 ## Project layout
 
 ```
@@ -137,10 +158,11 @@ vendorus/        core Python package (settings, database, engines)
   profit.py      landed cost, profit, margins, break-even
   scoring.py     opportunity score (0-100) and its breakdown
   ranking.py     ranking, filters and CSV export
+  validation.py  seasonality, reviews, risk flags, decisions
 app/             Streamlit dashboard: Home.py (entry point and navigation),
                  views/ (one file per page), ui.py (shared styling)
 .streamlit/      dashboard theme (light and dark, fonts, colours)
-config/          planning assumptions (planning.toml), scoring (scoring.toml)
+config/          planning.toml, scoring.toml, validation.toml
 templates/       blank CSV templates for hand-filled research
 tests/           automated tests (fixtures/ holds made-up sample CSVs)
 data/            local database and imports (never committed)

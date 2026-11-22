@@ -6,9 +6,9 @@ of overwriting older numbers, so trends and seasonality can be measured.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -41,6 +41,12 @@ class ResearchSnapshot(Base):
         back_populates="snapshot", cascade="all, delete-orphan"
     )
     competitors: Mapped[list[CompetitorAsin]] = relationship(
+        back_populates="snapshot", cascade="all, delete-orphan"
+    )
+    trends: Mapped[list[TrendPoint]] = relationship(
+        back_populates="snapshot", cascade="all, delete-orphan"
+    )
+    reviews: Mapped[list[Review]] = relationship(
         back_populates="snapshot", cascade="all, delete-orphan"
     )
 
@@ -111,6 +117,7 @@ class CompetitorAsin(_TracksMissingFields, Base):
     # The product ASIN or keyword phrase this listing competes with.
     competes_with: Mapped[str] = mapped_column(String(500), index=True)
     title: Mapped[str | None] = mapped_column(String(500))
+    brand: Mapped[str | None] = mapped_column(String(255))
     price: Mapped[float | None] = mapped_column(Float)
     review_count: Mapped[int | None] = mapped_column(Integer)
     rating: Mapped[float | None] = mapped_column(Float)
@@ -152,6 +159,58 @@ class ProductCost(Base):
     ads_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     ad_spend_pct: Mapped[float | None] = mapped_column(Float)
     planned_units_per_month: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, onupdate=_utc_now
+    )
+
+
+class TrendPoint(_TracksMissingFields, Base):
+    """One month of history for a keyword (search volume) or ASIN (sales)."""
+
+    __tablename__ = "trend_points"
+    __table_args__ = (UniqueConstraint("snapshot_id", "subject", "month", "metric"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        ForeignKey("research_snapshots.id", ondelete="CASCADE"), index=True
+    )
+    subject: Mapped[str] = mapped_column(String(500), index=True)  # ASIN or keyword phrase
+    month: Mapped[date] = mapped_column(Date)  # first day of the month
+    value: Mapped[float] = mapped_column(Float)
+    metric: Mapped[str] = mapped_column(String(30), default="search_volume")
+
+    snapshot: Mapped[ResearchSnapshot] = relationship(back_populates="trends")
+
+
+class Review(_TracksMissingFields, Base):
+    """A customer review of a product or one of its competitors."""
+
+    __tablename__ = "reviews"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        ForeignKey("research_snapshots.id", ondelete="CASCADE"), index=True
+    )
+    asin: Mapped[str] = mapped_column(String(10), index=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    review_date: Mapped[date | None] = mapped_column(Date)
+    title: Mapped[str | None] = mapped_column(String(500))
+    body: Mapped[str | None] = mapped_column(Text)
+    verified: Mapped[str | None] = mapped_column(String(20))
+
+    snapshot: Mapped[ResearchSnapshot] = relationship(back_populates="reviews")
+
+
+class ProductValidation(Base):
+    """Your validation checklist and go / no-go decision for one ASIN."""
+
+    __tablename__ = "product_validation"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asin: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    decision: Mapped[str] = mapped_column(String(20), default="Undecided")
+    checklist: Mapped[str] = mapped_column(Text, default="{}")  # JSON: item -> done
     notes: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, onupdate=_utc_now

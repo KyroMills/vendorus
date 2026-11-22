@@ -1,0 +1,88 @@
+# Validation settings: seasonality, reviews, risk flags and your checklist.
+#
+# Validation never changes the opportunity score. It adds flags and facts next
+# to it so you can decide go / no-go with eyes open. All limits here are
+# starting assumptions; adjust them as you learn.
+
+[seasonality]
+min_months = 12        # months of history needed to judge seasonality
+high_ratio = 2.5       # busiest month vs quietest month: "Highly seasonal"
+moderate_ratio = 1.6   # "Moderately seasonal"
+peak_factor = 1.25     # a month is a peak if at least 1.25x the average month
+declining_pct = -15    # last 12 months vs the 12 before: "Declining"
+growing_pct = 15       # "Growing"
+
+[reviews]
+low_star_max = 3             # 1-3 star reviews count as complaints
+min_low_reviews = 5          # complaints needed before listing common phrases
+top_phrases = 10
+fast_velocity = 30           # a top competitor adding this many reviews a month is hard to catch organically
+min_days_between_imports = 14  # imports this far apart are needed to measure review velocity
+high_complaint_share = 30    # % of reviews that are complaints: customers are unhappy with what exists
+
+[risk]
+brand_share_pct = 50         # one brand holds this share of market sales
+top_listing_share_pct = 40   # one listing holds this share of market sales
+
+# Product types that usually need extra checks before sourcing. Matched
+# against the product title, store category and linked keywords. These are
+# prompts to check, not legal advice.
+
+[[keyword_rules]]
+name = "Children's product"
+severity = "high"
+words = ["baby", "infant", "toddler", "kids", "child", "children", "toy", "nursery", "teether"]
+note = "Children's products in the US need third-party testing and a Children's Product Certificate (CPSIA), and some need Amazon approval. Check before sourcing."
+
+[[keyword_rules]]
+name = "Supplement or ingestible"
+severity = "high"
+words = ["supplement", "vitamin", "capsule", "gummies", "probiotic", "protein powder", "collagen", "herbal"]
+note = "Supplements and ingestibles have FDA labelling rules and Amazon category requirements. Check before sourcing."
+
+[[keyword_rules]]
+name = "Cosmetic or topical"
+severity = "medium"
+words = ["cream", "serum", "lotion", "sunscreen", "ointment", "balm", "shampoo", "skincare", "makeup"]
+note = "Topicals can need ingredient disclosure, FDA rules (sunscreen is a drug in the US) and Amazon approval. Check before sourcing."
+
+[[keyword_rules]]
+name = "Food or pet food"
+severity = "medium"
+words = ["food", "snack", "coffee", "tea", "spice", "treats", "kibble", "candy"]
+note = "Food needs FDA-registered facilities, expiry-date handling in FBA and often category approval."
+
+[[keyword_rules]]
+name = "Batteries or electronics"
+severity = "medium"
+words = ["battery", "lithium", "power bank", "charger", "rechargeable", "usb", "bluetooth", "led", "electric"]
+note = "Lithium batteries are often dangerous goods in FBA; wireless and powered products may need FCC or UL certification."
+
+[[keyword_rules]]
+name = "Medical claims"
+severity = "medium"
+words = ["medical", "pain relief", "brace", "thermometer", "therapy", "posture corrector", "orthopedic"]
+note = "Products making health claims may be FDA-regulated devices. Avoid medical claims unless you've checked the rules."
+
+[[keyword_rules]]
+name = "Fragile"
+severity = "info"
+words = ["glass", "ceramic", "porcelain", "mirror", "crystal"]
+note = "Fragile items break in transit, raising returns and damage costs. Budget for stronger packaging."
+
+[[keyword_rules]]
+name = "Sizing (high returns)"
+severity = "info"
+words = ["shirt", "dress", "pants", "shoes", "leggings", "jacket", "size"]
+note = "Clothing and anything sized tends to have high return rates."
+
+[checklist]
+items = [
+  "Ordered and tested supplier samples",
+  "Got a real supplier quote and entered it on the Profit page",
+  "Checked patents and trademarks for this design and name",
+  "Checked compliance, testing and category approval needs",
+  "Know how my product will fix the top customer complaints",
+  "Checked seasonality and timed the first order",
+  "Planned a listing that can rank organically (keywords, images, content)",
+]

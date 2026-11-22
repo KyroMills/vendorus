@@ -39,11 +39,13 @@ labels = {f"{p.asin} · {(p.title or 'untitled')[:70]}": p.asin for p in product
 keys = list(labels)
 requested = st.query_params.get("asin")
 index = next((i for i, k in enumerate(keys) if labels[k] == requested), 0)
-top, link = st.columns([4, 1.4], vertical_alignment="bottom")
+top, link, link2 = st.columns([4, 1.4, 1.1], vertical_alignment="bottom")
 asin = labels[top.selectbox("Product", keys, index=index)]
 st.query_params["asin"] = asin  # the address opens this product again
 link.page_link("views/profit.py", label="Costs and profit", icon=":material/payments:",
                query_params={"asin": asin})
+link2.page_link("views/validate.py", label="Validate", icon=":material/fact_check:",
+                query_params={"asin": asin})
 result = score_product(engine, asin, tables, planning, config)
 
 BAND_COLORS = {"Strong": "green", "Promising": "blue", "Weak": "orange", "Poor": "red"}

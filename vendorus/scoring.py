@@ -105,6 +105,7 @@ class Listing:
     review_count: int | None
     rating: float | None
     price: float | None
+    brand: str | None = None
 
 
 @dataclass
@@ -136,10 +137,10 @@ def _build_market(product, cost, keywords, competitor_rows, researched_on) -> Ma
     listings = []
     if product is not None:
         listings.append(Listing(product.asin, product.monthly_sales, product.review_count,
-                                product.rating, product.price))
+                                product.rating, product.price, product.brand))
     for c in competitors:
         if product is None or c.asin != product.asin:
-            listings.append(Listing(c.asin, c.monthly_sales, c.review_count, c.rating, c.price))
+            listings.append(Listing(c.asin, c.monthly_sales, c.review_count, c.rating, c.price, c.brand))
     return Market(product, cost, keywords, listings, researched_on)
 
 

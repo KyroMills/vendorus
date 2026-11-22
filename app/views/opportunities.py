@@ -9,12 +9,13 @@ APP = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP.parent))
 sys.path.insert(0, str(APP))
 
-from ui import cached_scores, keep, page_header, remember, section  # noqa: E402
+from ui import cached_scores, cached_validations, keep, page_header, remember, section  # noqa: E402
 from vendorus.config import load_settings  # noqa: E402
 from vendorus.db import get_engine  # noqa: E402
 from vendorus.profit import ORGANIC_NOTICE  # noqa: E402
 from vendorus.ranking import Filters, apply_filters, export_frame, rank, table  # noqa: E402
 from vendorus.scoring import load_scoring  # noqa: E402
+from vendorus.validation import DECISIONS, all_decisions  # noqa: E402
 
 page_header(
     "Opportunities",
@@ -25,6 +26,8 @@ page_header(
 engine = get_engine(load_settings())
 config = load_scoring()
 scores = cached_scores(engine)
+validations = cached_validations(engine)
+decisions = all_decisions(engine)
 
 if not scores:
     with st.container(border=True):
@@ -37,13 +40,15 @@ bands = [name for name, _ in config.bands]
 categories = sorted({s.category or "Uncategorised" for s in scores})
 prices = [float(s.price) for s in scores if s.price is not None]
 for key, default in (("opp_search", ""), ("opp_min", 0), ("opp_bands", []), ("opp_cats", []),
-                     ("opp_hide_warn", False)):
+                     ("opp_hide_warn", False), ("opp_decisions", [])):
     remember(key, default)
 
 with st.container(border=True):
-    f1, f2, f3 = st.columns([3, 2, 2])
+    f1, f2, f3, f4 = st.columns([3, 2, 2, 2])
     f1.text_input("Search", key="opp_search", placeholder="ASIN or product name",
                   label_visibility="collapsed")
+    f4.multiselect("Decision", list(DECISIONS), key="opp_decisions", placeholder="Any decision",
+                   label_visibility="collapsed")
     f2.multiselect("Band", bands, key="opp_bands", placeholder="Any band", label_visibility="collapsed")
     f3.multiselect("Category", categories, key="opp_cats", placeholder="Any category",
                    label_visibility="collapsed")
@@ -59,7 +64,7 @@ with st.container(border=True):
     else:
         price_range = (None, None)
     g3.toggle("No warnings", key="opp_hide_warn", help="Hide products that have any warning")
-keep("opp_search", "opp_min", "opp_bands", "opp_cats", "opp_hide_warn", "opp_price")
+keep("opp_search", "opp_min", "opp_bands", "opp_cats", "opp_hide_warn", "opp_price", "opp_decisions")
 
 filters = Filters(
     search=st.session_state["opp_search"],
@@ -69,6 +74,8 @@ filters = Filters(
     price_min=price_range[0],
     price_max=price_range[1],
     hide_warnings=st.session_state["opp_hide_warn"],
+    decisions=tuple(st.session_state["opp_decisions"]),
+    decision_of=decisions,
 )
 ranking = rank(apply_filters(scores, filters))
 shown = len(ranking.all)
@@ -92,6 +99,8 @@ COLUMNS = {
     "Sales/mo (est.)": st.column_config.NumberColumn(format="%d"),
     "Warnings": st.column_config.NumberColumn(width="small"),
     "Researched": st.column_config.DatetimeColumn(format="MMM D, YYYY"),
+    "Risks": st.column_config.TextColumn(help="Validation flags: high risks and things to check"),
+    "Decision": st.column_config.TextColumn(width="small"),
 }
 
 
@@ -119,14 +128,15 @@ ranked_tab, needs_tab, viable_tab = st.tabs([
 
 with ranked_tab:
     if ranking.ranked:
-        clickable(table(ranking.ranked, numbered=True), "ranked_table")
+        clickable(table(ranking.ranked, numbered=True, validations=validations, decisions=decisions),
+                  "ranked_table")
     else:
         st.info("No products with a full score match these filters.", icon=":material/filter_alt:")
 
 with needs_tab:
     st.caption(f"Fewer than {config.min_coverage} of 10 factors have data, so these get no score yet.")
     if ranking.needs_data:
-        frame = table(ranking.needs_data)
+        frame = table(ranking.needs_data, validations=validations, decisions=decisions)
         frame["Missing"] = [
             ", ".join(f.spec.label for f in s.factors if not f.scored) for s in ranking.needs_data
         ]
@@ -137,7 +147,8 @@ with needs_tab:
 with viable_tab:
     st.caption("These lose money per unit with no advertising, whatever their score.")
     if ranking.not_viable:
-        clickable(table(ranking.not_viable), "viable_table", hide=("Score", "Band", "Margin %"))
+        clickable(table(ranking.not_viable, validations=validations, decisions=decisions), "viable_table",
+                  hide=("Score", "Band", "Margin %"))
     else:
         st.info("Nothing here: no product loses money at its price.", icon=":material/check_circle:")
 
@@ -172,7 +183,7 @@ st.write("")
 left, right = st.columns([1.5, 2], vertical_alignment="center")
 left.download_button(
     f"Download CSV ({shown} products)",
-    data=export_frame(ranking).to_csv(index=False).encode(),
+    data=export_frame(ranking, validations, decisions).to_csv(index=False).encode(),
     file_name="vendorus_opportunities.csv",
     mime="text/csv",
     icon=":material/download:",

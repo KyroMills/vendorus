@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from datetime import date, datetime
 from enum import Enum
 
 
@@ -16,12 +17,15 @@ class ImportKind(str, Enum):
     PRODUCTS = "products"
     KEYWORDS = "keywords"
     COMPETITORS = "competitors"
+    TRENDS = "trends"
+    REVIEWS = "reviews"
 
 
 @dataclass(frozen=True)
 class FieldSpec:
     name: str
-    # asin, text, phrase (keyword), target (ASIN or keyword), number, integer
+    # asin, text, phrase (keyword), target (ASIN or keyword), number, integer,
+    # date, month (any date in the month; stored as the 1st)
     type: str
     required: bool = False
     aliases: tuple[str, ...] = ()
@@ -63,6 +67,26 @@ def normalize_phrase(text: str) -> str:
     return " ".join(text.lower().split())
 
 
+_DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d", "%b %d, %Y", "%B %d, %Y",
+                 "%d %b %Y", "%d %B %Y", "%b %d %Y", "%B %d %Y")
+_MONTH_FORMATS = ("%Y-%m", "%Y/%m", "%m/%Y", "%m-%Y", "%b %Y", "%B %Y", "%b-%Y", "%b-%y", "%B-%Y")
+
+
+def parse_date(text: str, month_only: bool = False) -> date | None:
+    """Read common date spellings. US order (month/day) for slashes, since
+    the marketplace is Amazon US."""
+    text = text.strip()
+    if "T" in text and text[:4].isdigit():
+        text = text.split("T")[0]  # ISO timestamps
+    formats = _DATE_FORMATS + (_MONTH_FORMATS if month_only else ())
+    for fmt in formats:
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 def _format_limit(limit: float) -> str:
     return str(int(limit)) if float(limit).is_integer() else str(limit)
 
@@ -78,6 +102,12 @@ def parse_value(spec: FieldSpec, raw: str | None):
 
     if spec.type == "text":
         return text
+    if spec.type in ("date", "month"):
+        parsed = parse_date(text, month_only=spec.type == "month")
+        if parsed is None:
+            kind = "month" if spec.type == "month" else "date"
+            raise FieldError(f"{spec.label} '{text}' is not a {kind} (try 2026-03-15 or Mar 2026)")
+        return parsed.replace(day=1) if spec.type == "month" else parsed
     if spec.type == "phrase":
         return normalize_phrase(text)
     if spec.type in ("asin", "target"):
@@ -165,11 +195,36 @@ SPECS: dict[ImportKind, tuple[FieldSpec, ...]] = {
             aliases=("competes with", "target", "target asin", "parent asin", "keyword", "keyword phrase"),
         ),
         _TITLE,
+        FieldSpec("brand", "text"),
         _PRICE,
         _REVIEWS,
         _RATING,
         _SALES,
         _REVENUE,
+    ),
+    # Monthly history for a keyword (search volume) or an ASIN (sales), e.g.
+    # from a research tool's history export, Keepa or Google Trends.
+    ImportKind.TRENDS: (
+        FieldSpec(
+            "subject", "target", required=True,
+            aliases=("keyword", "keyword phrase", "search term", "asin", "product asin", "product"),
+        ),
+        FieldSpec("month", "month", required=True, aliases=("date", "period", "month year")),
+        FieldSpec(
+            "value", "number", required=True, minimum=0,
+            aliases=("search volume", "volume", "sales", "units", "monthly sales", "interest", "trend"),
+        ),
+        FieldSpec("metric", "text", aliases=("measure", "type")),
+    ),
+    # Customer reviews for a product or its competitors.
+    ImportKind.REVIEWS: (
+        FieldSpec("asin", "asin", required=True, aliases=("product asin", "reviewed asin")),
+        FieldSpec("rating", "integer", required=True, minimum=1, maximum=5,
+                  aliases=("stars", "star rating", "review rating", "score")),
+        FieldSpec("review_date", "date", aliases=("date", "review date", "posted", "created")),
+        FieldSpec("title", "text", aliases=("review title", "headline", "summary")),
+        FieldSpec("body", "text", aliases=("review", "text", "content", "review text", "comment", "body text")),
+        FieldSpec("verified", "text", aliases=("verified purchase", "verified buyer")),
     ),
 }
 
@@ -178,7 +233,19 @@ KEY_FIELDS: dict[ImportKind, tuple[str, ...]] = {
     ImportKind.PRODUCTS: ("asin",),
     ImportKind.KEYWORDS: ("phrase",),
     ImportKind.COMPETITORS: ("asin", "competes_with"),
+    ImportKind.TRENDS: ("subject", "month", "metric"),
+    ImportKind.REVIEWS: ("asin", "review_date", "title", "body"),
 }
+
+
+def trend_metric(value_column: str) -> str:
+    """What a trend's numbers measure, from the value column's name."""
+    name = normalize_header(value_column)
+    if any(word in name for word in ("sales", "units")):
+        return "sales"
+    if any(word in name for word in ("interest", "trend")):
+        return "interest"
+    return "search_volume"
 
 
 _UNIT_FACTORS = {

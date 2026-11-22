@@ -104,3 +104,35 @@ def keep(*keys: str) -> None:
     for key in keys:
         if key in st.session_state:
             st.session_state[f"_kept_{key}"] = st.session_state[key]
+
+
+@st.cache_data(show_spinner="Checking products…", max_entries=4)
+def _validate_all(database_url: str, version: tuple):
+    """Validation for every product, cached like the scores."""
+    from vendorus.config import load_settings
+    from vendorus.db import get_engine
+    from vendorus.fees import load_fee_tables
+    from vendorus.profit import load_planning
+    from vendorus.scoring import gather_all_markets, load_scoring, score_market
+    from vendorus.validation import validate_all
+
+    engine = get_engine(load_settings())
+    tables, planning, config = load_fee_tables(), load_planning(), load_scoring()
+    markets = gather_all_markets(engine)
+    scores = [score_market(m, tables, planning, config) for m in markets]
+    return validate_all(engine, markets, scores)
+
+
+def cached_validations(engine):
+    from dataclasses import astuple
+
+    from vendorus.ranking import data_version
+
+    return _validate_all(str(engine.url), astuple(data_version(engine)))
+
+
+SEVERITY_BADGES = {
+    "high": ("High", "red", ":material/error:"),
+    "medium": ("Check", "orange", ":material/warning:"),
+    "info": ("Note", "blue", ":material/info:"),
+}
