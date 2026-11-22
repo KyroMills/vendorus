@@ -107,3 +107,55 @@ def test_port_used_on_all_addresses_is_not_free():
         server.listen()
         port = server.getsockname()[1]
         assert not launcher.port_free(port)
+
+
+def test_state_records_the_owning_launcher(tmp_path):
+    path = tmp_path / "state.json"
+    launcher.write_state(10, 8501, path, owner=20)
+    assert launcher.read_state(path) == {"pid": 10, "port": 8501, "owner": 20}
+
+
+def test_splash_page_shows_message_and_follows_dark_mode():
+    page = launcher.splash_html("Starting Vendorus…")
+    assert "Starting Vendorus…" in page and "prefers-color-scheme: dark" in page
+    assert 'class="spin"' in page
+    assert 'class="spin"' not in launcher.splash_html("Failed", "details", spinner=False)
+
+
+def test_app_icon_is_drawn_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(launcher, "DATA", tmp_path)
+    icon = launcher.app_icon_png()
+    assert icon == tmp_path / "app_icon.png" and icon.stat().st_size > 1000
+    assert launcher.app_icon_png() == icon
+
+
+def test_window_falls_back_to_browser_without_pywebview(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_webview(name, *args, **kwargs):
+        if name == "webview":
+            raise ImportError(name)
+        return real_import(name, *args, **kwargs)
+
+    calls = []
+    monkeypatch.setattr(builtins, "__import__", no_webview)
+    monkeypatch.setattr(launcher, "run_browser", lambda python: calls.append(python) or 0)
+    assert launcher.run_window(Path("/x/python")) == 0
+    assert calls == [Path("/x/python")]
+
+
+def test_pywebview_is_a_requirement():
+    assert "pywebview" in (ROOT / "requirements.txt").read_text()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="checks the non-Windows behaviour")
+def test_shortcut_is_windows_only():
+    assert launcher.install_windows_shortcut() is None
+
+
+def test_mac_app_builder_copies_gui_python_and_sets_identity():
+    script = (ROOT / "scripts" / "make_mac_app.sh").read_text()
+    assert "Resources/Python.app/Contents/MacOS/Python" in script
+    assert "local.vendorus.app" in script and launcher.APP_ID == "local.vendorus.app"

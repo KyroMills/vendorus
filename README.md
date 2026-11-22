@@ -39,22 +39,28 @@ If PowerShell blocks the activate script, run once:
 
 ## Run
 
-### Desktop launcher (easiest)
+### Desktop app (easiest)
 
-- **Mac:** double-click `Vendorus.command` in Finder. For a Dock icon, run
-  `scripts/make_mac_app.sh` once; it builds `Vendorus.app` in your
-  Applications folder (Home > Applications). Open it, then right-click its
-  Dock icon and choose Options > Keep in Dock. Clicking the icon again
-  reopens the browser; Quit stops the dashboard.
-- **Windows:** double-click `Vendorus.bat`. To pin it, right-click it and
-  choose Send to > Desktop (create shortcut).
+Vendorus opens in its own app window, like any other program: no browser
+tabs or address bar. Closing the window (or quitting) stops it.
 
-The launcher sets everything up on first run (creates `.venv` and installs
-the requirements), picks a free port, and opens the dashboard in your
-browser. Closing the launcher window stops the dashboard. It only listens on
-this computer, not your network. Logs go to `data/launcher.log`.
+- **Mac:** run `scripts/make_mac_app.sh` once. It builds `Vendorus.app` in
+  your Applications folder (Home > Applications). Open it, then right-click
+  its Dock icon and choose Options > Keep in Dock. The first time, macOS asks
+  whether Vendorus may access your Documents folder (where this project
+  lives); choose Allow. You can also double-click `Vendorus.command`.
+- **Windows:** double-click `Vendorus.bat`. The first run installs what's
+  needed and puts a **Vendorus** shortcut on your desktop; use that from
+  then on. The window uses Microsoft Edge WebView2, which is built into
+  Windows 10 and 11.
 
-If you move the project folder, run `scripts/make_mac_app.sh` again.
+The app sets everything up on first run (creates `.venv` and installs the
+requirements), picks a free port, and only listens on this computer, not
+your network. Logs go to `data/launcher.log`. To use your browser instead,
+run `python launcher.py --browser`.
+
+If you move the project folder, run `scripts/make_mac_app.sh` again (Mac) or
+delete the desktop shortcut and double-click `Vendorus.bat` (Windows).
 
 ### From a terminal
 
@@ -113,8 +119,8 @@ tests/           automated tests (fixtures/ holds made-up sample CSVs)
 data/            local database and imports (never committed)
 .env.example     template for local settings; copy to .env
 PROGRESS.md      completed work and remaining tasks
-launcher.py      desktop launcher (Vendorus.command / Vendorus.bat run it)
-scripts/         make_mac_app.sh builds the Mac Dock app
+launcher.py      desktop app: opens the dashboard in its own window
+scripts/         make_mac_app.sh builds Vendorus.app; make_icon.py draws the icon
 ```
 
 ## Key decisions

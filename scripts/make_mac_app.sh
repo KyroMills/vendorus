@@ -1,7 +1,7 @@
 #!/bin/bash
-# Build Vendorus.app: a Dock app that starts the dashboard and opens it in
-# your browser. Clicking it again reopens the browser; Quit stops the
-# dashboard.
+# Build Vendorus.app: a real Mac app with its own window, Dock icon and menu.
+# Opening it starts the dashboard inside the app window; quitting (Cmd+Q or
+# closing the window) stops it.
 #
 #   scripts/make_mac_app.sh            installs to ~/Applications
 #   scripts/make_mac_app.sh /some/dir  installs somewhere else
@@ -16,68 +16,82 @@ APP="$DEST_DIR/Vendorus.app"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-escaped_repo=${REPO//\\/\\\\}
-escaped_repo=${escaped_repo//\"/\\\"}
+# 1. Make sure the project's Python environment exists.
+if [ ! -x "$REPO/.venv/bin/python" ]; then
+  echo "Setting up the Python environment first..."
+  "$REPO/Vendorus.command" --setup-only
+fi
+PY="$REPO/.venv/bin/python"
 
-cat > "$WORK/Vendorus.applescript" <<APPLESCRIPT
-property repo : "$escaped_repo"
-
-on run
-	startDashboard()
-end run
-
-on reopen
-	startDashboard()
-end reopen
-
-on startDashboard()
-	try
-		do shell script "cd " & quoted form of repo & " && ./Vendorus.command --background"
-	on error errorMessage
-		display dialog "Vendorus couldn't start." & return & return & errorMessage ¬
-			buttons {"OK"} default button 1 with icon caution with title "Vendorus"
-	end try
-end startDashboard
-
-on quit
-	try
-		do shell script "cd " & quoted form of repo & " && ./Vendorus.command --stop"
-	end try
-	continue quit
-end quit
-APPLESCRIPT
+# 2. Find the GUI Python executable behind the venv. Copying it into the app
+#    makes macOS treat the window as "Vendorus" (name, icon, Dock) rather
+#    than "Python".
+GUI_PYTHON="$("$PY" -c 'import os, sys; p = os.path.join(sys.base_prefix, "Resources/Python.app/Contents/MacOS/Python"); print(p if os.path.exists(p) else "")')"
 
 mkdir -p "$DEST_DIR"
 rm -rf "$APP"
-# -s: stay open, so the app shows in the Dock while the dashboard runs.
-osacompile -s -o "$APP" "$WORK/Vendorus.applescript"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-# Icon: draw it with Pillow (installed with Streamlit), then build an .icns file.
-PY="$REPO/.venv/bin/python"
-if [ -x "$PY" ] && "$PY" "$REPO/scripts/make_icon.py" "$WORK/icon.png" 2>/dev/null; then
-  ICONSET="$WORK/Vendorus.iconset"
-  mkdir -p "$ICONSET"
-  for size in 16 32 128 256 512; do
-    sips -z $size $size "$WORK/icon.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-    double=$((size * 2))
-    sips -z $double $double "$WORK/icon.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-  done
-  iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/applet.icns"
-  # Newer macOS reads the compiled asset catalog first; remove it so the new icon shows.
-  rm -f "$APP/Contents/Resources/Assets.car"
-  /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APP/Contents/Info.plist" 2>/dev/null || true
+if [ -n "$GUI_PYTHON" ]; then
+  cp "$GUI_PYTHON" "$APP/Contents/MacOS/vendorus-python"
+  RUNNER='"$HERE/vendorus-python"'
 else
-  echo "Note: couldn't draw the icon (run Vendorus.command once first); using the default icon."
+  echo "Note: this Python isn't a framework build; the Dock may show Python's icon."
+  RUNNER="\"$PY\""
 fi
 
-# Name and identity shown by macOS.
-/usr/libexec/PlistBuddy -c "Set :CFBundleName Vendorus" "$APP/Contents/Info.plist" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string local.vendorus.launcher" \
-  "$APP/Contents/Info.plist" 2>/dev/null ||
-  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier local.vendorus.launcher" "$APP/Contents/Info.plist"
-# Re-sign locally (ad hoc) because the icon and Info.plist changed after osacompile signed it.
-codesign --force --deep --sign - "$APP" 2>/dev/null || true
+# 3. The app's entry point: start the launcher in app-window mode.
+cat > "$APP/Contents/MacOS/Vendorus" <<SCRIPT
+#!/bin/bash
+HERE="\$(cd "\$(dirname "\$0")" && pwd)"
+REPO="$REPO"
+if [ ! -f "\$REPO/launcher.py" ]; then
+  osascript -e 'display alert "Vendorus can'"'"'t find its project folder" message "Expected it at $REPO. If you moved it, run scripts/make_mac_app.sh again." as critical'
+  exit 1
+fi
+cd "\$REPO"
+exec $RUNNER "\$REPO/launcher.py"
+SCRIPT
+chmod +x "$APP/Contents/MacOS/Vendorus"
+
+# 4. Icon, drawn with Pillow (installed with Streamlit).
+"$PY" "$REPO/scripts/make_icon.py" "$WORK/icon.png"
+ICONSET="$WORK/Vendorus.iconset"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+  sips -z $size $size "$WORK/icon.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  double=$((size * 2))
+  sips -z $double $double "$WORK/icon.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Vendorus.icns"
+
+# 5. Identity shown by macOS.
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Vendorus</string>
+  <key>CFBundleDisplayName</key><string>Vendorus</string>
+  <key>CFBundleIdentifier</key><string>local.vendorus.app</string>
+  <key>CFBundleExecutable</key><string>Vendorus</string>
+  <key>CFBundleIconFile</key><string>Vendorus</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSMinimumSystemVersion</key><string>12.0</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.business</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+</dict>
+</plist>
+PLIST
+
+# 6. Sign locally (ad hoc) so macOS runs the copied Python inside the app.
+codesign --force --deep --sign - "$APP" 2>/dev/null
 touch "$APP"
+# Refresh the icon in Finder and the Dock.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" 2>/dev/null || true
 
 echo "Built $APP"
 echo "Open it from Finder (Go > Home > Applications), then right-click its Dock icon"

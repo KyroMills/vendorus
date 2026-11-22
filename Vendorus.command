@@ -1,6 +1,6 @@
 #!/bin/bash
-# Double-click to start the Vendorus dashboard (macOS).
-# Close this window, or press Ctrl+C, to stop it.
+# Double-click to open Vendorus in its own window (macOS).
+# Closing the Vendorus window stops it. For a Dock app, run scripts/make_mac_app.sh.
 cd "$(dirname "$0")" || exit 1
 
 # Finder and the Dock app start with a minimal PATH; add the usual Python homes.

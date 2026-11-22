@@ -37,8 +37,9 @@
   - Older databases are upgraded in place (new columns added)
 
 - [x] Dashboard: modern light and dark theme, sidebar navigation, Overview page
-- [x] Desktop launcher: double-click files for Mac and Windows, Mac Dock app
-  (tested on macOS; Windows launcher not yet tested on a Windows PC)
+- [x] Desktop app: Vendorus opens in its own window (pywebview) with its own
+  Dock icon on Mac and a desktop shortcut on Windows; closing it stops the
+  dashboard (tested on macOS; Windows not yet tested on a Windows PC)
 
 ## Next up
 
