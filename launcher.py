@@ -99,7 +99,8 @@ def use_project_packages(root: Path = ROOT) -> None:
 
 # --- running instance --------------------------------------------------------
 
-def read_state(path: Path = STATE_FILE) -> dict | None:
+def read_state(path: Path | None = None) -> dict | None:
+    path = path or STATE_FILE
     try:
         state = json.loads(path.read_text())
         return state if {"pid", "port"} <= set(state) else None
@@ -107,16 +108,38 @@ def read_state(path: Path = STATE_FILE) -> dict | None:
         return None
 
 
-def write_state(pid: int, port: int, path: Path = STATE_FILE, owner: int | None = None) -> None:
-    """Remember the dashboard. `owner` is the launcher process that stops it."""
+def write_state(pid: int, port: int, path: Path | None = None, owner: int | None = None,
+                code: str | None = None) -> None:
+    """Remember the dashboard. `owner` is the launcher process that stops it;
+    `code` is the code version it was started with."""
+    path = path or STATE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     state = {"pid": pid, "port": port}
     if owner is not None:
         state["owner"] = owner
+    if code is not None:
+        state["code"] = code
     path.write_text(json.dumps(state))
 
 
-def clear_state(path: Path = STATE_FILE) -> None:
+CODE_DIRS = ("app", "vendorus", "config", ".streamlit")
+
+
+def code_version(root: Path = ROOT) -> str:
+    """A fingerprint of the dashboard's code and settings. It changes when
+    you pull, merge or edit, so a dashboard started before that is restarted
+    instead of being reused with old code."""
+    latest, count = 0.0, 0
+    for folder in CODE_DIRS:
+        for path in (root / folder).rglob("*"):
+            if path.suffix in (".py", ".toml") and "__pycache__" not in path.parts:
+                latest = max(latest, path.stat().st_mtime)
+                count += 1
+    return f"{latest:.3f}:{count}"
+
+
+def clear_state(path: Path | None = None) -> None:
+    path = path or STATE_FILE
     path.unlink(missing_ok=True)
 
 
@@ -146,13 +169,34 @@ def healthy(port: int, timeout: float = 1.0) -> bool:
         return False
 
 
-def running_instance(path: Path = STATE_FILE) -> dict | None:
+def running_instance(path: Path | None = None) -> dict | None:
     """The dashboard this launcher started, if it's still up."""
+    path = path or STATE_FILE
     state = read_state(path)
     if state and process_alive(state["pid"]) and healthy(state["port"]):
         return state
     if state:
         clear_state(path)  # left over from a crash or restart
+    return None
+
+
+def reusable_instance(path: Path | None = None, current_code: str | None = None) -> dict | None:
+    """A running dashboard that's safe to reuse: started with the current code.
+
+    One running old code is stopped (so a fresh one starts), unless another
+    open launcher window still owns it."""
+    path = path or STATE_FILE
+    state = running_instance(path)
+    if state is None:
+        return None
+    current_code = current_code or code_version()
+    if state.get("code") == current_code:
+        return state
+    if process_alive(state.get("owner", 0)):
+        say("A Vendorus window that's still open runs older code; reusing it. Close it to load updates.")
+        return state
+    say("The running dashboard is from older code; restarting it.")
+    stop(path)
     return None
 
 
@@ -231,7 +275,8 @@ def wait_until_healthy(process: subprocess.Popen, port: int, timeout: float = ST
     return False
 
 
-def stop(path: Path = STATE_FILE) -> bool:
+def stop(path: Path | None = None) -> bool:
+    path = path or STATE_FILE
     state = read_state(path)
     clear_state(path)
     if not state or not process_alive(state["pid"]):
@@ -346,7 +391,7 @@ def run_window(python: Path) -> int:
         say("The app window needs pywebview (pip install pywebview); opening your browser instead.")
         return run_browser(python)
 
-    existing = running_instance()
+    existing = reusable_instance()
     owned: dict = {"process": None}
 
     def stop_owned(*_):
@@ -365,7 +410,7 @@ def run_window(python: Path) -> int:
             if existing and not process_alive(existing.get("owner", 0)):
                 # A dashboard left from an earlier session: adopt it.
                 port = existing["port"]
-                write_state(existing["pid"], port, owner=os.getpid())
+                write_state(existing["pid"], port, owner=os.getpid(), code=existing.get("code"))
                 owned["process"] = existing["pid"]
             elif existing:
                 port = existing["port"]  # owned by another open launcher; just view it
@@ -374,7 +419,7 @@ def run_window(python: Path) -> int:
                 say(f"Starting on port {port}...")
                 process = start_server(python, port, background=False)
                 owned["process"] = process.pid
-                write_state(process.pid, port, owner=os.getpid())
+                write_state(process.pid, port, owner=os.getpid(), code=code_version())
                 if not wait_until_healthy(process, port):
                     stop_owned()
                     window.load_html(splash_html(
@@ -399,7 +444,7 @@ def run_window(python: Path) -> int:
 
 
 def run_browser(python: Path, background: bool = False, open_it: bool = True) -> int:
-    existing = running_instance()
+    existing = reusable_instance()
     if existing:
         say(f"Already running on port {existing['port']}.")
         if open_it:
@@ -409,7 +454,7 @@ def run_browser(python: Path, background: bool = False, open_it: bool = True) ->
     port = find_free_port()
     say(f"Starting on port {port}...")
     process = start_server(python, port, background=background)
-    write_state(process.pid, port, owner=None if background else os.getpid())
+    write_state(process.pid, port, owner=None if background else os.getpid(), code=code_version())
 
     if not wait_until_healthy(process, port):
         stop()

@@ -15,6 +15,20 @@ sys.path.insert(0, str(ROOT))
 import launcher  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def isolated_files(monkeypatch, tmp_path):
+    """Never touch the real data/launcher.json or launcher.log."""
+    monkeypatch.setattr(launcher, "DATA", tmp_path / "data")
+    monkeypatch.setattr(launcher, "STATE_FILE", tmp_path / "data" / "launcher.json")
+    monkeypatch.setattr(launcher, "LOG_FILE", tmp_path / "data" / "launcher.log")
+
+
+def test_tests_use_a_temporary_state_file(tmp_path):
+    launcher.write_state(1, 8501)
+    assert (tmp_path / "data" / "launcher.json").exists()
+    assert launcher.read_state() == {"pid": 1, "port": 8501}
+
+
 def test_state_round_trip(tmp_path):
     path = tmp_path / "state.json"
     assert launcher.read_state(path) is None
@@ -159,3 +173,55 @@ def test_mac_app_builder_copies_gui_python_and_sets_identity():
     script = (ROOT / "scripts" / "make_mac_app.sh").read_text()
     assert "Resources/Python.app/Contents/MacOS/Python" in script
     assert "local.vendorus.app" in script and launcher.APP_ID == "local.vendorus.app"
+
+
+def test_code_version_changes_when_code_changes(tmp_path):
+    (tmp_path / "app").mkdir()
+    page = tmp_path / "app" / "page.py"
+    page.write_text("x = 1")
+    os.utime(page, (1000, 1000))
+    before = launcher.code_version(tmp_path)
+    os.utime(page, (2000, 2000))
+    assert launcher.code_version(tmp_path) != before
+    (tmp_path / "app" / "new.py").write_text("")
+    assert launcher.code_version(tmp_path).endswith(":2")
+
+
+@pytest.fixture
+def running_server(monkeypatch):
+    """A stand-in dashboard: a live process, with health checks faked."""
+    server = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    monkeypatch.setattr(launcher, "healthy", lambda port, timeout=1.0: True)
+    yield server
+    server.kill()
+
+
+def test_dashboard_with_current_code_is_reused(tmp_path, running_server):
+    path = tmp_path / "state.json"
+    launcher.write_state(running_server.pid, 8597, path, code="v2")
+    assert launcher.reusable_instance(path, current_code="v2")["pid"] == running_server.pid
+
+
+def test_dashboard_left_running_with_old_code_is_restarted(tmp_path, running_server):
+    """Regression: a dashboard started before an update was reused, so new
+    pages failed to import things the old code didn't have."""
+    path = tmp_path / "state.json"
+    finished = subprocess.Popen([sys.executable, "-c", "pass"])
+    finished.wait()  # its launcher window is gone
+    launcher.write_state(running_server.pid, 8597, path, owner=finished.pid, code="v1")
+    assert launcher.reusable_instance(path, current_code="v2") is None
+    assert running_server.wait(timeout=10) is not None  # the old dashboard was stopped
+    assert not path.exists()
+
+
+def test_old_code_dashboard_owned_by_an_open_window_is_left_alone(tmp_path, running_server):
+    path = tmp_path / "state.json"
+    launcher.write_state(running_server.pid, 8597, path, owner=os.getpid(), code="v1")
+    assert launcher.reusable_instance(path, current_code="v2")["pid"] == running_server.pid
+    assert running_server.poll() is None
+
+
+def test_dashboards_from_before_this_fix_count_as_old(tmp_path, running_server):
+    path = tmp_path / "state.json"
+    launcher.write_state(running_server.pid, 8597, path)  # no code recorded
+    assert launcher.reusable_instance(path, current_code="v2") is None
