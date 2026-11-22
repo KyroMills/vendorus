@@ -8,9 +8,11 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(ROOT))
+APP = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(APP.parent))
+sys.path.insert(0, str(APP))
 
+from ui import page_header, section, usd  # noqa: E402
 from vendorus.config import load_settings  # noqa: E402
 from vendorus.costs import get_cost, latest_products, save_cost, suggest_fee_category  # noqa: E402
 from vendorus.db import get_engine  # noqa: E402
@@ -23,21 +25,28 @@ from vendorus.profit import (  # noqa: E402
     load_planning,
 )
 
-st.set_page_config(page_title="Profit · Vendorus", layout="wide")
-st.title("Profit calculator")
-st.warning(ORGANIC_NOTICE, icon="⚠️")
+page_header(
+    "Profit calculator",
+    "Amazon fees, landed cost and margin per unit. Organic-first: no advertising unless you add it.",
+    eyebrow="Research",
+)
 
 tables = load_fee_tables()
 planning = load_planning()
 engine = get_engine(load_settings())
 today = date.today()
 
+st.warning(ORGANIC_NOTICE, icon=":material/trending_flat:")
 if tables.is_out_of_date(today):
-    st.error("The Amazon fee table has expired. Update vendorus/fees/us.toml from Amazon's fee pages.")
-if not tables.reviewed:
-    st.info(
-        f"Fee tables were copied from Amazon's pages on {tables.retrieved:%B %d, %Y} and haven't been "
-        "marked as reviewed yet. Sources are listed at the bottom of this page."
+    st.error(
+        "The Amazon fee table has expired. Update vendorus/fees/us.toml from Amazon's fee pages.",
+        icon=":material/error:",
+    )
+elif not tables.reviewed:
+    st.badge(
+        f"Fees copied from Amazon {tables.retrieved:%b %d, %Y} · not yet reviewed",
+        icon=":material/rule:", color="orange",
+        help="Sources are listed at the bottom of this page. Set reviewed = true in us.toml once checked.",
     )
 
 
@@ -49,16 +58,13 @@ def first(*values):
     return next((v for v in values if v is not None), None)
 
 
-def usd(value) -> str:
-    return "—" if value is None else f"${value:,.2f}"
-
-
 # --- choose a product ------------------------------------------------------
 products = latest_products(engine)
 by_label = {"Enter a product by hand": None}
 for p in products:
     by_label[f"{p.asin} · {(p.title or 'untitled')[:70]}"] = p
 
+st.write("")
 left, right = st.columns([3, 2])
 choice = left.selectbox("Product", list(by_label))
 product = by_label[choice]
@@ -86,7 +92,7 @@ category_default = first(saved_category, suggested)
 with st.form(f"inputs-{key}"):
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("**Price and category**")
+        st.markdown(":material/sell: **Price and category**")
         price = st.number_input(
             "Selling price ($)", min_value=0.01, step=0.50, key=f"{key}-price",
             value=float(first(saved and saved.planned_price, product and product.price, 19.99)),
@@ -103,7 +109,7 @@ with st.form(f"inputs-{key}"):
             "Dangerous goods (hazmat)", value=bool(saved and saved.dangerous_goods), key=f"{key}-dg"
         )
     with c2:
-        st.markdown("**Packaged size and weight**")
+        st.markdown(":material/package_2: **Packaged size and weight**")
         dims = {}
         for name, label in (("length_in", "Length (in)"), ("width_in", "Width (in)"),
                             ("height_in", "Height (in)"), ("weight_lb", "Weight (lb)")):
@@ -113,7 +119,7 @@ with st.form(f"inputs-{key}"):
                 placeholder="needed for FBA fees",
             )
     with c3:
-        st.markdown("**Landed cost per unit**")
+        st.markdown(":material/local_shipping: **Landed cost per unit**")
         unit_cost = st.number_input(
             "Unit cost from supplier ($)", min_value=0.0, step=0.10, key=f"{key}-unit",
             value=saved.unit_cost if saved else None, placeholder="needed for profit",
@@ -127,7 +133,8 @@ with st.form(f"inputs-{key}"):
         other = st.number_input("Other per unit ($)", min_value=0.0, step=0.05, key=f"{key}-other",
                                 value=float(first(saved and saved.other_per_unit, 0.0)))
 
-    st.markdown("**Planning assumptions**")
+    st.divider()
+    st.markdown(":material/tune: **Planning assumptions**")
     a1, a2, a3, a4 = st.columns(4)
     returns_pct = a1.number_input(
         "Returns (% of units)", min_value=0.0, max_value=100.0, step=0.5, key=f"{key}-returns",
@@ -146,7 +153,7 @@ with st.form(f"inputs-{key}"):
     )
     with a4:
         ads_enabled = st.checkbox(
-            "Add an advertising scenario", key=f"{key}-ads",
+            "Ad scenario", key=f"{key}-ads",
             value=bool(saved and saved.ads_enabled),
             help="Off by default (organic-first). Shows profit with and without ads.",
         )
@@ -155,7 +162,9 @@ with st.form(f"inputs-{key}"):
             value=float(first(saved and saved.ad_spend_pct, planning.ad_spend_pct)),
         )
 
-    submitted = st.form_submit_button("Calculate and save" if asin else "Calculate", type="primary")
+    submitted = st.form_submit_button(
+        "Calculate and save" if asin else "Calculate", type="primary", icon=":material/calculate:"
+    )
 
 if submitted and asin:
     save_cost(
@@ -166,7 +175,7 @@ if submitted and asin:
         ads_enabled=ads_enabled, ad_spend_pct=ad_pct, planned_units_per_month=planned_units,
         **dims,
     )
-    st.toast(f"Saved costs for {asin}")
+    st.toast(f"Saved costs for {asin}", icon=":material/check_circle:")
 
 # --- results ---------------------------------------------------------------
 inputs = ProductInputs(
@@ -181,20 +190,21 @@ assumptions = replace(
 )
 result = analyze(tables, period, inputs, assumptions, ads_enabled=ads_enabled)
 
-st.header("Result")
+st.write("")
+section("Result")
 for problem in result.missing:
-    st.error(problem)
+    st.error(problem, icon=":material/error:")
 for warning in result.fees.warnings:
-    st.warning(warning)
+    st.warning(warning, icon=":material/warning:")
 
 scenarios = [result.organic] + ([result.with_ads] if result.with_ads else [])
 break_evens = [result.break_even_organic, result.break_even_with_ads]
 cols = st.columns(len(scenarios))
 for col, s in zip(cols, scenarios):
     with col:
-        st.metric(f"{s.name}: profit per unit", usd(s.profit))
+        st.metric(f"{s.name}: profit per unit", usd(s.profit), border=True)
         if s.profit is not None and s.profit < 0:
-            st.error("Loses money on every unit at this price.")
+            st.error("Loses money on every unit at this price.", icon=":material/trending_down:")
 
 
 def pct(value) -> str:
@@ -214,7 +224,7 @@ summary = pd.DataFrame(
 st.dataframe(summary, width="stretch")
 
 if not ads_enabled:
-    st.caption("No advertising assumed. Turn on the advertising scenario above to compare.")
+    st.caption("No advertising assumed. Turn on the ad scenario above to compare.")
 
 rows = {}
 for s in scenarios:
@@ -224,7 +234,7 @@ for s in scenarios:
 breakdown = pd.DataFrame.from_dict(rows, orient="index")
 breakdown.loc["Selling price"] = usd(inputs.price)
 breakdown = breakdown.reindex(["Selling price"] + [i for i in breakdown.index if i != "Selling price"])
-st.subheader("Where each dollar goes")
+section("Where each dollar goes")
 st.dataframe(breakdown.fillna("—"), width="stretch")
 
 fees = result.fees
@@ -235,24 +245,25 @@ if fees.size_tier:
     )
 
 if planned_units and result.organic.profit is not None:
-    st.subheader("At your planned volume")
+    section("At your planned volume")
     st.caption(f"{planned_units} units per month is your plan, not a forecast. Sales are not guaranteed.")
     mcols = st.columns(len(scenarios))
     for col, s in zip(mcols, scenarios):
-        col.metric(f"{s.name}: profit per month", usd(s.profit * planned_units))
+        col.metric(f"{s.name}: profit per month", usd(s.profit * planned_units), border=True)
     st.caption(f"Before the ${planning.professional_plan_monthly}/month Professional plan (account level).")
 
 if product and product.monthly_sales:
     st.info(
-        f"Research estimate for this ASIN: about {product.monthly_sales:,} sales a month. That is an "
+        icon=":material/insights:",
+        body=f"Research estimate for this ASIN: about {product.monthly_sales:,} sales a month. That is an "
         "established listing's estimate. A new listing starts with no reviews or ranking and will not "
         "start at that level."
     )
 
-with st.expander("Not included in these figures"):
+with st.expander("Not included in these figures", icon=":material/block:"):
     st.markdown("\n".join(f"- {item}" for item in NOT_INCLUDED))
 
-with st.expander("Fee sources"):
+with st.expander("Fee sources", icon=":material/link:"):
     st.markdown(
         f"Copied on {tables.retrieved:%B %d, %Y} from Amazon. "
         + ("Reviewed." if tables.reviewed else "Not yet marked as reviewed.")

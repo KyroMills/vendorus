@@ -14,21 +14,36 @@ def temp_database(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'app.db').as_posix()}")
 
 
-@pytest.mark.parametrize("page", ["Home.py", "pages/1_Import.py", "pages/2_Profit.py"])
+@pytest.mark.parametrize("page", ["views/import_data.py", "views/profit.py"])
 def test_page_loads(page):
     at = AppTest.from_file(str(APP / page), default_timeout=30).run()
     assert not at.exception
 
 
-def test_import_page_switches_types():
-    at = AppTest.from_file(str(APP / "pages/1_Import.py"), default_timeout=30).run()
-    at.radio[0].set_value(at.radio[0].options[1]).run()  # keywords
+def test_app_opens_on_overview_with_navigation():
+    at = AppTest.from_file(str(APP / "Home.py"), default_timeout=30).run()
     assert not at.exception
-    assert "Nothing imported yet." in [m.value for m in at.markdown]
+    assert at.title[0].value == "Product research"
+    assert [m.label for m in at.metric] == ["Products", "Keywords", "With costs", "Imports"]
+
+
+@pytest.mark.parametrize("page", ["views/import_data.py", "views/profit.py"])
+def test_navigation_reaches_each_page(page):
+    at = AppTest.from_file(str(APP / "Home.py"), default_timeout=30).run()
+    at.switch_page(page).run()
+    assert not at.exception
+
+
+def test_import_page_switches_types():
+    at = AppTest.from_file(str(APP / "views/import_data.py"), default_timeout=30).run()
+    control = at.button_group[0]
+    control.set_value(control.options[1].content if hasattr(control.options[1], "content") else "keywords").run()
+    assert not at.exception
+    assert any("Nothing imported yet." in m.value for m in at.markdown)
 
 
 def test_profit_page_by_hand_shows_organic_warning_and_needs_inputs():
-    at = AppTest.from_file(str(APP / "pages/2_Profit.py"), default_timeout=30).run()
+    at = AppTest.from_file(str(APP / "views/profit.py"), default_timeout=30).run()
     assert not at.exception
     assert "not guaranteed" in at.warning[0].value
     errors = " ".join(e.value for e in at.error)
@@ -47,7 +62,7 @@ def test_profit_page_calculates_an_imported_product(tmp_path):
     save_cost(engine, "B0TEST0002", fee_category="Home and Kitchen", unit_cost=3,
               ads_enabled=True, ad_spend_pct=10)
 
-    at = AppTest.from_file(str(APP / "pages/2_Profit.py"), default_timeout=30).run()
+    at = AppTest.from_file(str(APP / "views/profit.py"), default_timeout=30).run()
     at.selectbox[0].set_value(at.selectbox[0].options[2]).run()  # B0TEST0002
     assert not at.exception
     labels = [m.label for m in at.metric]

@@ -46,7 +46,7 @@ streamlit run app/Home.py   # open the dashboard at http://localhost:8501
 
 ## Importing research data
 
-Open the dashboard and go to the **Import** page. Pick products, keywords or
+Open the dashboard and go to **Import data** in the sidebar. Pick products, keywords or
 competitors, upload a CSV and click Import. You can use any tool's export or
 fill in a blank template from `templates/` by hand.
 
@@ -61,7 +61,7 @@ fill in a blank template from `templates/` by hand.
 
 ## Profit calculator
 
-The **Profit** page shows what Amazon takes, what the product costs to land,
+The **Profit** page (sidebar) shows what Amazon takes, what the product costs to land,
 and what's left per unit. Pick an imported product (or enter one by hand),
 confirm the referral fee category, and enter the packaged size and weight and
 your costs. Costs are saved per ASIN.
@@ -85,7 +85,9 @@ vendorus/        core Python package (settings, database, engines)
   importers/     data import: column matching, checks, CSV source
   fees/          Amazon fee tables (us.toml) and fee calculations
   profit.py      landed cost, profit, margins, break-even
-app/             Streamlit dashboard (pages/ holds extra pages)
+app/             Streamlit dashboard: Home.py (entry point and navigation),
+                 views/ (one file per page), ui.py (shared styling)
+.streamlit/      dashboard theme (light and dark, fonts, colours)
 config/          planning assumptions (planning.toml)
 templates/       blank CSV templates for hand-filled research
 tests/           automated tests (fixtures/ holds made-up sample CSVs)
