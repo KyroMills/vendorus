@@ -36,20 +36,27 @@ if not products:
     st.stop()
 
 labels = {f"{p.asin} · {(p.title or 'untitled')[:70]}": p.asin for p in products}
-asin = labels[st.selectbox("Product", list(labels))]
+keys = list(labels)
+requested = st.query_params.get("asin")
+index = next((i for i, k in enumerate(keys) if labels[k] == requested), 0)
+top, link = st.columns([4, 1.4], vertical_alignment="bottom")
+asin = labels[top.selectbox("Product", keys, index=index)]
+st.query_params["asin"] = asin  # the address opens this product again
+link.page_link("views/profit.py", label="Costs and profit", icon=":material/payments:",
+               query_params={"asin": asin})
 result = score_product(engine, asin, tables, planning, config)
 
 BAND_COLORS = {"Strong": "green", "Promising": "blue", "Weak": "orange", "Poor": "red"}
 STATUS_COLORS = {"Not viable": "red", "Not enough data": "gray"}
 
 st.write("")
-left, right = st.columns([1, 2], gap="large")
+left, right = st.columns([1.25, 2], gap="large")
 with left:
     with st.container(border=True):
         # Only a fully usable score is shown as a headline number. A partial
         # score (too few factors) or a money-losing product would mislead.
         headline = f"{result.total} / 100" if result.status == "Scored" else "—"
-        st.metric("Opportunity score", headline)
+        st.metric("Score", headline)
         if result.status == "Scored":
             st.badge(result.band, color=BAND_COLORS.get(result.band, "gray"), icon=":material/insights:")
         else:
@@ -99,7 +106,8 @@ if missing:
             st.markdown(f"- **{f.spec.label}**: {f.missing}")
         c1, c2 = st.columns(2)
         c1.page_link("views/import_data.py", label="Import competitors or keywords", icon=":material/upload_file:")
-        c2.page_link("views/profit.py", label="Enter costs on the Profit page", icon=":material/payments:")
+        c2.page_link("views/profit.py", label="Enter costs on the Profit page", icon=":material/payments:",
+                     query_params={"asin": asin})
 
 with st.expander("How the score works", icon=":material/info:"):
     st.markdown(

@@ -129,6 +129,20 @@ def _latest_per(rows, key):
     return list(newest.values())
 
 
+def _build_market(product, cost, keywords, competitor_rows, researched_on) -> Market:
+    """Assemble one product's market. Competitors: newest row per competitor
+    ASIN among rows that compete with this ASIN or one of its keywords."""
+    competitors = _latest_per(competitor_rows, lambda c: c.asin)
+    listings = []
+    if product is not None:
+        listings.append(Listing(product.asin, product.monthly_sales, product.review_count,
+                                product.rating, product.price))
+    for c in competitors:
+        if product is None or c.asin != product.asin:
+            listings.append(Listing(c.asin, c.monthly_sales, c.review_count, c.rating, c.price))
+    return Market(product, cost, keywords, listings, researched_on)
+
+
 def gather_market(engine: Engine, asin: str) -> Market:
     """The product, its linked keywords and its competitors, newest data first."""
     create_tables(engine)
@@ -140,24 +154,43 @@ def gather_market(engine: Engine, asin: str) -> Market:
             session.scalars(select(Keyword).where(Keyword.product_asin == asin)), lambda k: k.phrase
         )
         targets = [asin] + [k.phrase for k in keywords]
-        competitors = _latest_per(
-            session.scalars(select(CompetitorAsin).where(
-                or_(*(CompetitorAsin.competes_with == t for t in targets))
-            )),
-            lambda c: c.asin,
-        )
+        competitor_rows = list(session.scalars(select(CompetitorAsin).where(
+            or_(*(CompetitorAsin.competes_with == t for t in targets))
+        )))
         researched_on = None
         if product is not None:
             researched_on = session.get(ResearchSnapshot, product.snapshot_id).imported_at
+    return _build_market(product, get_cost(engine, asin), keywords, competitor_rows, researched_on)
 
-    listings = []
-    if product is not None:
-        listings.append(Listing(product.asin, product.monthly_sales, product.review_count,
-                                product.rating, product.price))
-    for c in competitors:
-        if c.asin != asin:
-            listings.append(Listing(c.asin, c.monthly_sales, c.review_count, c.rating, c.price))
-    return Market(product, get_cost(engine, asin), keywords, listings, researched_on)
+
+def gather_all_markets(engine: Engine) -> list[Market]:
+    """Every product's market, loaded with a handful of bulk queries.
+    Same rules as gather_market, newest imports first."""
+    create_tables(engine)
+    with Session(engine, expire_on_commit=False) as session:
+        products = _latest_per(session.scalars(select(Product)), lambda p: p.asin)
+        products.sort(key=lambda p: (-p.snapshot_id, p.id))
+        imported = dict(session.execute(select(ResearchSnapshot.id, ResearchSnapshot.imported_at)).all())
+        costs = {c.asin: c for c in session.scalars(select(ProductCost))}
+        keywords_by_asin: dict[str, list[Keyword]] = {}
+        for k in _latest_per(
+            session.scalars(select(Keyword).where(Keyword.product_asin.is_not(None))),
+            lambda k: (k.product_asin, k.phrase),
+        ):
+            keywords_by_asin.setdefault(k.product_asin, []).append(k)
+        competitors_by_target: dict[str, list[CompetitorAsin]] = {}
+        for c in session.scalars(select(CompetitorAsin)):
+            competitors_by_target.setdefault(c.competes_with, []).append(c)
+
+    markets = []
+    for product in products:
+        keywords = keywords_by_asin.get(product.asin, [])
+        rows = []
+        for target in [product.asin] + [k.phrase for k in keywords]:
+            rows.extend(competitors_by_target.get(target, []))
+        markets.append(_build_market(product, costs.get(product.asin), keywords, rows,
+                                     imported.get(product.snapshot_id)))
+    return markets
 
 
 # --- result -------------------------------------------------------------------
@@ -184,6 +217,15 @@ class Score:
     warnings: list[str] = field(default_factory=list)
     listings: int = 0
     main_keyword: str | None = None
+    # Summary numbers for ranking tables.
+    title: str | None = None
+    category: str | None = None
+    price: Decimal | None = None
+    profit: Decimal | None = None  # organic, per unit
+    margin_pct: Decimal | None = None
+    break_even: Decimal | None = None
+    monthly_sales: int | None = None  # research estimate for this ASIN
+    researched_on: datetime | None = None
 
     @property
     def coverage(self) -> int:
@@ -344,8 +386,9 @@ def score_market(
     if total is not None and status == "Scored":
         band = next(name for name, minimum in config.bands if total >= minimum)
 
+    product = market.product
     return Score(
-        asin=market.product.asin if market.product else (market.cost.asin if market.cost else "?"),
+        asin=product.asin if product else (market.cost.asin if market.cost else "?"),
         total=total,
         status=status,
         band=band,
@@ -353,6 +396,14 @@ def score_market(
         warnings=warnings,
         listings=len(listings),
         main_keyword=keyword.phrase if keyword else None,
+        title=product.title if product else None,
+        category=product.category if product else None,
+        price=inputs.price if inputs is not None else None,
+        profit=organic.profit if organic else None,
+        margin_pct=organic.margin_pct if organic else None,
+        break_even=analysis.break_even_organic if analysis else None,
+        monthly_sales=product.monthly_sales if product else None,
+        researched_on=market.researched_on,
     )
 
 
@@ -361,3 +412,12 @@ def score_product(
     config: ScoringConfig | None = None, today: date | None = None,
 ) -> Score:
     return score_market(gather_market(engine, asin), tables, planning, config or load_scoring(), today)
+
+
+def score_all(
+    engine: Engine, tables: FeeTables, planning: Assumptions,
+    config: ScoringConfig | None = None, today: date | None = None,
+) -> list[Score]:
+    """Score every imported product."""
+    config = config or load_scoring()
+    return [score_market(m, tables, planning, config, today) for m in gather_all_markets(engine)]

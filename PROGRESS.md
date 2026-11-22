@@ -53,6 +53,25 @@
     price, oversize, apparel/hazmat, research older than 90 days
   - Score page with a per-factor breakdown; hand-worked example tested
 
+- [x] Phase 4: ranked opportunities (Milestone 1 complete)
+  - Opportunities page: every product ranked by score, in three tabs
+    (Ranked / Needs data / Not viable) so incomplete or money-losing
+    products never sit in the ranking
+  - Filters (search, band, category, price, minimum score, no warnings),
+    remembered between pages
+  - Click a row to open its Score page; Score and Profit pages open a
+    product from the address (e.g. /score?asin=...) and link to each other
+  - Compare 2-4 products factor by factor; CSV export with every factor
+  - Overview shows the top 5 opportunities
+  - All products scored with a few bulk queries and cached until data or
+    settings change (500 products in about 0.3 s)
+  - End-to-end test: import, costs, score, rank, export
+
+## Milestone 1: done
+
+Import real research data, calculate organic profitability from Amazon's
+own fees, score every product 0-100 with a full breakdown, and rank them.
+
 ## Next up
 
 - [ ] Review the fee table against Amazon and set `reviewed = true` in us.toml
@@ -60,7 +79,6 @@
       login)
 - [ ] Not yet supported: apparel and dangerous-goods rate cards, oversize
       handling fees, storage for stock older than 180 days
-- [ ] Phase 4: ranked opportunities dashboard (Milestone 1)
 
 ## Later
 

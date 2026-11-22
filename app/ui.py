@@ -62,3 +62,45 @@ def section(title: str, caption: str | None = None) -> None:
 
 def usd(value) -> str:
     return "—" if value is None else f"${value:,.2f}"
+
+
+# --- shared data ----------------------------------------------------------------
+
+@st.cache_data(show_spinner="Scoring products…", max_entries=4)
+def _score_all(database_url: str, version: tuple):
+    """Score every product. Cached per database and data version, so it only
+    runs again after an import, a cost change or a settings change."""
+    from vendorus.config import load_settings
+    from vendorus.db import get_engine
+    from vendorus.fees import load_fee_tables
+    from vendorus.profit import load_planning
+    from vendorus.scoring import load_scoring, score_all
+
+    engine = get_engine(load_settings())
+    return score_all(engine, load_fee_tables(), load_planning(), load_scoring())
+
+
+def cached_scores(engine):
+    from dataclasses import astuple
+
+    from vendorus.ranking import data_version
+
+    return _score_all(str(engine.url), astuple(data_version(engine)))
+
+
+def remember(key: str, default=None):
+    """Keep a widget's value when you switch pages and come back.
+    Call before creating the widget with key=key; call keep(key) after."""
+    stored = f"_kept_{key}"
+    if key in st.session_state:
+        return  # the widget is live on this page: keep what the user just set
+    if stored in st.session_state:
+        st.session_state[key] = st.session_state[stored]  # back from another page
+    elif default is not None:
+        st.session_state[key] = default
+
+
+def keep(*keys: str) -> None:
+    for key in keys:
+        if key in st.session_state:
+            st.session_state[f"_kept_{key}"] = st.session_state[key]

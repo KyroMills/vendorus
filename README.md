@@ -69,6 +69,17 @@ pytest                      # run the tests
 streamlit run app/Home.py   # open the dashboard at http://localhost:8501
 ```
 
+## How to use Vendorus
+
+1. **Import data** (Research > Import data): products, then their
+   competitors and keywords. Link competitors through "competes with" (the
+   product's ASIN or keyword) and keywords through their product ASIN.
+2. **Enter costs** (Profit): referral category, packaged size and weight,
+   unit cost, freight, duty. Saved per ASIN.
+3. **Check the score** (Score): see each factor and what data is missing.
+4. **Rank** (Opportunities): every product ranked, with filters, a
+   side-by-side comparison and a CSV export. Click a row to open its score.
+
 ## Importing research data
 
 Open the dashboard and go to **Import data** in the sidebar. Pick products, keywords or
@@ -125,6 +136,7 @@ vendorus/        core Python package (settings, database, engines)
   fees/          Amazon fee tables (us.toml) and fee calculations
   profit.py      landed cost, profit, margins, break-even
   scoring.py     opportunity score (0-100) and its breakdown
+  ranking.py     ranking, filters and CSV export
 app/             Streamlit dashboard: Home.py (entry point and navigation),
                  views/ (one file per page), ui.py (shared styling)
 .streamlit/      dashboard theme (light and dark, fonts, colours)

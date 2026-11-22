@@ -66,9 +66,18 @@ for p in products:
 
 st.write("")
 left, right = st.columns([3, 2])
-choice = left.selectbox("Product", list(by_label))
+choices = list(by_label)
+requested = st.query_params.get("asin")
+index = next((i for i, k in enumerate(choices) if by_label[k] and by_label[k].asin == requested), 0)
+choice = left.selectbox("Product", choices, index=index)
 product = by_label[choice]
 asin = product.asin if product else None
+if asin:
+    st.query_params["asin"] = asin  # the address opens this product again
+    left.page_link("views/score.py", label="Opportunity score for this product", icon=":material/insights:",
+                   query_params={"asin": asin})
+elif "asin" in st.query_params:
+    del st.query_params["asin"]
 saved = get_cost(engine, asin) if asin else None
 
 periods = list(tables.periods)

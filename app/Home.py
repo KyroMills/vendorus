@@ -19,6 +19,8 @@ apply_style()
 pages = {
     "": [st.Page(APP / "views" / "overview.py", title="Overview", icon=":material/dashboard:", default=True)],
     "Research": [
+        st.Page(APP / "views" / "opportunities.py", title="Opportunities", icon=":material/leaderboard:",
+                url_path="opportunities"),
         st.Page(APP / "views" / "import_data.py", title="Import data", icon=":material/upload_file:",
                 url_path="import"),
         st.Page(APP / "views" / "profit.py", title="Profit", icon=":material/payments:", url_path="profit"),

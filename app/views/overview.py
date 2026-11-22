@@ -9,7 +9,8 @@ APP = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP.parent))
 sys.path.insert(0, str(APP))
 
-from ui import page_header, section  # noqa: E402
+from ui import cached_scores, page_header, section  # noqa: E402
+from vendorus.ranking import rank  # noqa: E402
 from vendorus import __version__  # noqa: E402
 from vendorus.config import load_settings  # noqa: E402
 from vendorus.db import check_connection, get_engine  # noqa: E402
@@ -40,6 +41,22 @@ if stats:
     c2.metric("Keywords", f"{stats.keywords:,}", border=True)
     c3.metric("With costs", f"{stats.costed:,}", border=True, help="Products with a unit cost entered")
     c4.metric("Imports", f"{stats.imports:,}", border=True)
+
+if stats and stats.products:
+    ranking = rank(cached_scores(engine))
+    st.write("")
+    section("Top opportunities")
+    with st.container(border=True):
+        if ranking.ranked:
+            for position, s in enumerate(ranking.ranked[:5], start=1):
+                cols = st.columns([0.4, 5, 1.2], vertical_alignment="center")
+                cols[0].markdown(f"**{position}**")
+                cols[1].page_link("views/score.py", label=f"{s.asin} · {(s.title or 'untitled')[:60]}",
+                                  query_params={"asin": s.asin})
+                cols[2].markdown(f"**{s.total}** · {s.band}")
+        else:
+            st.caption("No product has a full score yet. Add competitors, keywords and costs.")
+        st.page_link("views/opportunities.py", label="See all opportunities", icon=":material/leaderboard:")
 
 st.write("")
 left, right = st.columns([3, 2], gap="large")
@@ -96,7 +113,7 @@ with right:
             (True, "Data import"),
             (True, "Fee and profit engine"),
             (True, "Opportunity scoring"),
-            (False, "Ranked opportunities"),
+            (True, "Ranked opportunities"),
         ):
             icon = ":material/check_circle:" if done else ":material/radio_button_unchecked:"
             st.markdown(f"{icon} {label}")
