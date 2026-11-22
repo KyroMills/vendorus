@@ -69,3 +69,41 @@ def test_profit_page_calculates_an_imported_product(tmp_path):
     # Organic and with-ads results side by side.
     assert labels[:2] == ["Organic (no ads): profit per unit", "With ads (10%): profit per unit"]
     assert not at.error
+
+
+def test_score_page_shows_breakdown_for_an_imported_product(tmp_path):
+    from vendorus.config import load_settings
+    from vendorus.db import get_engine
+    from vendorus.importers import import_csv
+
+    engine = get_engine(load_settings(env_file=tmp_path / "missing.env"))
+    fixtures = Path(__file__).parent / "fixtures"
+    for name, kind in (("products_clean", "products"), ("keywords", "keywords"), ("competitors", "competitors")):
+        import_csv(engine, fixtures / f"{name}.csv", kind)
+
+    at = AppTest.from_file(str(APP / "Home.py"), default_timeout=30).run()
+    at.switch_page("views/score.py").run()
+    assert not at.exception
+    assert at.metric[0].label == "Opportunity score"
+    # B0TEST0001 has 6 of 10 factors: enough for a score.
+    assert at.metric[0].value == "68 / 100"
+
+
+def test_score_page_hides_a_partial_score(tmp_path):
+    from vendorus.config import load_settings
+    from vendorus.db import get_engine
+    from vendorus.importers import import_csv
+
+    engine = get_engine(load_settings(env_file=tmp_path / "missing.env"))
+    import_csv(engine, Path(__file__).parent / "fixtures" / "products_clean.csv", "products")
+    at = AppTest.from_file(str(APP / "Home.py"), default_timeout=30).run()
+    at.switch_page("views/score.py").run()
+    assert not at.exception
+    assert at.metric[0].value == "—"  # 1 of 10 factors: no misleading headline number
+
+
+def test_score_page_without_products_points_to_import():
+    at = AppTest.from_file(str(APP / "Home.py"), default_timeout=30).run()
+    at.switch_page("views/score.py").run()
+    assert not at.exception
+    assert any("No products yet" in m.value for m in at.markdown)

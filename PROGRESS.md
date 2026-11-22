@@ -41,6 +41,18 @@
   Dock icon on Mac and a desktop shortcut on Windows; closing it stops the
   dashboard (tested on macOS; Windows not yet tested on a Windows PC)
 
+- [x] Phase 3: opportunity scoring
+  - 0-100 score from 10 factors: market demand, search demand, review
+    barrier, competition density, room to do better (ratings), sales spread,
+    organic margin, return on cost, price point, fee efficiency
+  - Limits, weights, bands and reasons in `config/scoring.toml`
+  - Missing data is left out, never guessed; total scaled over scored
+    factors; coverage always shown; under 6 of 10 = "Not enough data" (no
+    headline score)
+  - Hard stops: loses money with no ads = "Not viable"; warnings for fragile
+    price, oversize, apparel/hazmat, research older than 90 days
+  - Score page with a per-factor breakdown; hand-worked example tested
+
 ## Next up
 
 - [ ] Review the fee table against Amazon and set `reviewed = true` in us.toml
@@ -48,7 +60,6 @@
       login)
 - [ ] Not yet supported: apparel and dangerous-goods rate cards, oversize
       handling fees, storage for stock older than 180 days
-- [ ] Phase 3: opportunity scoring (0-100, 10 factors, full breakdown)
 - [ ] Phase 4: ranked opportunities dashboard (Milestone 1)
 
 ## Later

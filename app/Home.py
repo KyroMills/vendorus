@@ -22,6 +22,7 @@ pages = {
         st.Page(APP / "views" / "import_data.py", title="Import data", icon=":material/upload_file:",
                 url_path="import"),
         st.Page(APP / "views" / "profit.py", title="Profit", icon=":material/payments:", url_path="profit"),
+        st.Page(APP / "views" / "score.py", title="Score", icon=":material/insights:", url_path="score"),
     ],
 }
 st.logo(str(APP / "assets" / "logo.svg"), icon_image=str(APP / "assets" / "icon.svg"), size="large")

@@ -1,0 +1,122 @@
+# Opportunity scoring settings.
+#
+# Each factor earns 0 to `weight` points. Points scale smoothly between the
+# `zero` value (no points) and the `full` value (all points); if `zero` is
+# bigger than `full`, lower is better. `log = true` compares on a log scale
+# (going from 100 to 200 reviews matters more than 1,100 to 1,200).
+#
+# These limits are starting assumptions for organic-first private label, not
+# facts. Change them as you learn what works for you.
+
+# A product needs at least this many scored factors to be ranked.
+min_coverage = 6
+# Listings (the product plus its competitors) needed for market factors.
+min_listings = 3
+# Listings with sales estimates needed to judge how concentrated sales are.
+min_listings_for_spread = 5
+# How many of the best-selling listings count as "the top competitors".
+top_listings = 10
+# Research older than this many days gets a warning.
+stale_after_days = 90
+# Warn when the break-even price is at least this share of the selling price.
+fragile_break_even_pct = 90
+
+# Score bands: the minimum score for each label.
+[bands]
+Strong = 75
+Promising = 55
+Weak = 35
+Poor = 0
+
+# --- Demand -----------------------------------------------------------------
+
+[factors.market_demand]
+label = "Market demand"
+group = "Demand"
+weight = 10
+zero = 100
+full = 600
+why = "Average monthly sales of the top listings. Enough proven demand that a new listing can win a share."
+
+[factors.search_demand]
+label = "Search demand"
+group = "Demand"
+weight = 10
+zero = 2000
+full = 20000
+log = true
+why = "Monthly searches for the main keyword. Organic sales come from search."
+
+# --- Organic competition ----------------------------------------------------
+
+[factors.review_barrier]
+label = "Review barrier"
+group = "Organic competition"
+weight = 10
+zero = 1500
+full = 150
+log = true
+why = "Median reviews of the top listings. Fewer reviews means a new listing can catch up without ads."
+
+[factors.competition_density]
+label = "Competition density"
+group = "Organic competition"
+weight = 10
+zero = 500
+full = 50
+log = true
+why = "Competing products per 1,000 monthly searches for the main keyword. Fewer means less crowded results."
+
+[factors.rating_gap]
+label = "Room to do better"
+group = "Organic competition"
+weight = 10
+zero = 4.6
+full = 4.0
+why = "Average rating of the top listings. Weaker ratings leave room for a better product to stand out."
+
+[factors.sales_spread]
+label = "Sales spread"
+group = "Organic competition"
+weight = 10
+zero = 85
+full = 50
+why = "Share of sales held by the top 3 listings. Lower means no one dominates and a newcomer can win sales."
+
+# --- Profit (organic, no advertising) ---------------------------------------
+
+[factors.margin]
+label = "Organic margin"
+group = "Profit"
+weight = 10
+zero = 15
+full = 35
+why = "Profit margin with no advertising (Phase 2). Room to absorb price pressure and returns."
+
+[factors.roi]
+label = "Return on cost"
+group = "Profit"
+weight = 10
+zero = 50
+full = 150
+why = "Organic profit divided by landed cost. How hard each dollar of inventory works."
+
+[factors.price_point]
+label = "Price point"
+group = "Profit"
+weight = 10
+zero_low = 10
+full_low = 20
+full_high = 60
+zero_high = 120
+why = "Selling price. Below $20 fees eat the margin; above $60 buyers compare more and stock ties up more cash."
+
+# --- Operations -------------------------------------------------------------
+
+[factors.fee_share]
+label = "Fee efficiency"
+group = "Operations"
+weight = 10
+zero = 50
+full = 30
+why = "Amazon fees (referral, fulfillment, surcharge, storage) as a share of price. Lower leaves more for you."

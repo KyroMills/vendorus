@@ -56,8 +56,8 @@ with left:
         st.page_link("views/profit.py", label="Open profit calculator", icon=":material/payments:")
     with st.container(border=True):
         st.markdown("**3. Score opportunities**")
-        st.caption("Coming in Phase 3: a 0–100 score with a full breakdown.")
-        st.badge("Coming next", icon=":material/schedule:", color="gray")
+        st.caption("A 0–100 score from ten factors, with the number behind every point.")
+        st.page_link("views/score.py", label="Open scores", icon=":material/insights:")
 
 with right:
     section("Status")
@@ -95,7 +95,7 @@ with right:
             (True, "Foundation"),
             (True, "Data import"),
             (True, "Fee and profit engine"),
-            (False, "Opportunity scoring"),
+            (True, "Opportunity scoring"),
             (False, "Ranked opportunities"),
         ):
             icon = ":material/check_circle:" if done else ":material/radio_button_unchecked:"

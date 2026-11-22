@@ -103,6 +103,20 @@ your costs. Costs are saved per ASIN.
 - The page lists the costs that are not included (inbound placement, peak
   fees unless selected, aged storage, promotions, the monthly plan fee and more).
 
+## Opportunity score
+
+The **Score** page gives each product a 0-100 score from ten factors (demand,
+organic competition, organic profit and fees), showing the number behind
+every point. A product is scored with its market: competitors whose
+"competes with" is its ASIN or one of its keywords, and keywords linked to
+its ASIN. Profit factors use the Profit page's numbers with no advertising.
+
+- Missing data is left out, never guessed. Coverage is always shown, and
+  products with fewer than 6 scored factors get no score until you add data.
+- A product that loses money with no advertising is "Not viable".
+- Limits, weights and score bands are in `config/scoring.toml`, with the
+  reason for each. They're starting assumptions; tune them as you learn.
+
 ## Project layout
 
 ```
@@ -110,10 +124,11 @@ vendorus/        core Python package (settings, database, engines)
   importers/     data import: column matching, checks, CSV source
   fees/          Amazon fee tables (us.toml) and fee calculations
   profit.py      landed cost, profit, margins, break-even
+  scoring.py     opportunity score (0-100) and its breakdown
 app/             Streamlit dashboard: Home.py (entry point and navigation),
                  views/ (one file per page), ui.py (shared styling)
 .streamlit/      dashboard theme (light and dark, fonts, colours)
-config/          planning assumptions (planning.toml)
+config/          planning assumptions (planning.toml), scoring (scoring.toml)
 templates/       blank CSV templates for hand-filled research
 tests/           automated tests (fixtures/ holds made-up sample CSVs)
 data/            local database and imports (never committed)
